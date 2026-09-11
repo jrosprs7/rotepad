@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Installers
+*.exe
+*.msi
+
+# Personal note backups
+Rotepad-backup-*.json
+
+# Logs and temporary files
+*.log
+*.tmp
+*.bak
+~$*
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+
+# Editor settings
+.vscode/
+.idea/
+
+# Operating system files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Local tool runtime
+.sites-runtime/

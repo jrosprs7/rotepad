@@ -1,0 +1,25 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict'),path=require('node:path');
+const js=fs.readFileSync(path.join(__dirname,'../Rotepad.html'),'utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
+const fields={'save-status':{},'find-panel':{hidden:true},font:{value:'Consolas'},size:{value:'16'}};
+let stored,now=1000000;
+const c={console,Date:{now:()=>now},Math,mode:'write',editor:{value:'original',selectionStart:0,selectionEnd:0},filename:{value:'First.md'},histories:new Map(),restoringHistory:false,activeId:'first',notes:[{id:'first',name:'First.md',text:'original',revisions:[],updated:0}],prefs:{},libraryKey:'test',appReady:true,$:id=>fields[id],localStorage:{setItem:(k,v)=>stored=JSON.parse(v)}};
+vm.createContext(c);
+vm.runInContext(js.slice(js.indexOf('const uid='),js.indexOf('function applyPrefs')),c);
+vm.runInContext(js.slice(js.indexOf('function changedCharacters'),js.indexOf('let savepointReason')),c);
+vm.runInContext('renderNotes=()=>{};updateUndo=()=>{};',c);
+c.history();c.editor.value='changed';c.persistLibrary();
+assert.equal(stored.notes[0].text,'changed');
+assert.equal(stored.notes[0].revisions[0].text,'original');
+assert.equal(c.history().items.length,2);
+c.addRevision(c.notes[0]);assert.equal(c.notes[0].revisions.length,1,'cooldown blocks closely spaced snapshots');
+now+=180000;c.addRevision(c.notes[0],c.notes[0].text,c.notes[0].name,'Manual savepoint');c.addRevision(c.notes[0]);
+assert.equal(c.notes[0].revisions.length,2,'identical revisions are not duplicated');
+for(let i=0;i<40;i++){now+=180000;c.addRevision(c.notes[0],'revision '+i,c.notes[0].name,'Manual savepoint')}
+assert.equal(c.notes[0].revisions.length,25);
+c.activeId='second';c.notes.push({id:'second',name:'Second.md',text:'second',revisions:[]});c.editor.value='second';c.filename.value='Second.md';c.history();
+assert.equal(c.history().items.length,1,'new note gets independent undo history');
+assert.equal(c.histories.get('first').items.length,2);
+c.localStorage.setItem=()=>{throw Error('Quota exceeded')};c.persistLibrary();
+assert.equal(c.storageOK,false);
+assert.match(fields['save-status'].textContent,/save .md/);
+console.log('9 note storage, recovery, history isolation, and storage-failure checks passed.');
