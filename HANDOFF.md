@@ -1,79 +1,75 @@
 # Rotepad handoff
 
-Updated: 2026-09-11
+Updated: 9/12/26 6:20 PM GMT+8 (Asia/Manila).
 
-## Current status and latest request
+## Latest font update
 
-Latest follow-up: Quote and Find are now icon-only with accessible labels/tooltips. History no longer creates savepoints every few seconds. All newly added savepoints have a minimum 180,000 ms interval per note; automatic entries additionally require significant changes. Manual savepoints honor that interval too. Existing history is retained. If an in-place restore occurs during the cooldown, displaced work is preserved as a separate `(before restore).md` note when needed. Undo and browser autosave remain immediate.
+- Iosevka SS03 Extended is the default note font; Iosevka Fixed SS03 is also in the font menu. Existing common fonts remain available.
+- Eight full WOFF2 faces are embedded in Rotepad.html: regular, bold, italic, and bold italic for each family. No font installation or network is needed. Font data adds roughly 6 MB to the HTML.
+- A one-time prefs.iosevkaDefaultVersion migration selects Extended for existing users; subsequent user font choices persist.
+- Font changes preserve text zoom. Underline continues to use the editor's text decoration.
+- FONT-LICENSE.txt contains the original Iosevka 34.8.1 SIL OFL license, also embedded in the HTML. tools/embed-fonts.py reproduces the conversion from the supplied IosevkaSS03.ttc using fonttools and brotli. .font-build-deps is ignored local tooling.
+- tests/fonts.cjs checks embedded face coverage, the default migration, and preservation of zoom. When editing HTML, verify embedded data remains intact; regenerate with the tool if needed.
+- Validation for this batch: all ten test scripts passed. A fresh headless Edge session loaded all eight faces and selected Extended with no page errors. Broader interactive editing QA remains on the roadmap.
 
-The user resumed and authorized all seven UI simplification suggestions, grouped typing undo, and selection-only Clear formatting. These are implemented. Read the completed-update section of ROADMAP.md before proposing additional work; do not repeat already completed changes.
+## Current state
 
-The September 11 update adds File/View/Help menus, active formatting indicators, a paragraph-style selector, Download note wording, a compact Find bar with optional replacement, less instructional text, grouped typing history, and selected inline-format removal that preserves block structure. Find also exits Focus mode to reveal its controls. Line spacing remains directly accessible.
+Standalone offline Notepad-meets-Notion editor in Rotepad.html. Latest work: Backspace or Enter on an empty list item exits into a normal paragraph; Zoom affects note text only; changelog.md created and continuation documents refreshed.
 
-## Files
+## Project files
 
-- `Rotepad.html` — the complete standalone app. Open it directly in a browser; no installation, server, or internet is required for the app.
-- `ROADMAP.md` — proposed simplification and reliability work from the latest review.
-- `HANDOFF.md` — this document.
-- `tests/formatting.cjs`, `tests/library.cjs`, `tests/backup.cjs`, `tests/comfort.cjs` — Node-based checks.
-- `Rotepad-Setup.exe` — pre-existing file; not created or modified during this work.
+- Rotepad.html: all HTML/CSS/JavaScript; open directly in a browser. No build/server required.
+- tests/*.cjs: Node syntax, isolated logic, mocked file-save, and minimal DOM fixture tests.
+- changelog.md: append the actual GMT+8 date/time after EVERY completed future change batch. Do not fabricate timestamps for older work.
+- HANDOFF.md: update when current behavior changes.
+- ROADMAP.md: remaining proposals and verification work.
+- Rotepad-Setup.exe: old unrelated installer; do not modify or commit it.
 
-Workspace: `C:\Users\jrosp\Documents\Claude_Rotepad`
+Original workspace: C:\Users\jrosp\Documents\Claude_Rotepad
+User-created repository: https://github.com/jrosprs7/rotepad.git (verify remote before operations). Do not push without a request.
 
-The user's in-app browser was displaying `file:///C:/Users/jrosp/Documents/Claude_Rotepad/Rotepad.html`. Source changes require refreshing/reopening that page.
+## Latest user preferences
 
-## User preferences
+- Simple, compact writing experience; avoid toolbar clutter.
+- Default formatted Write; optional Markdown, Split, Preview under View.
+- Only two modest heading tiers: H1 1.25em, H2 1.12em.
+- Three-tier line spacing is Settings-only.
+- Zoom affects ONLY note text, with 16px at 100%; no body/interface scaling or visible font-size control.
+- Sidebar on left, Find on right. Sidebar/undo/redo/quote/find/link are icons with tooltips and accessible labels. Link is a small horizontal chain.
+- Select text and click Quote/Link to format it.
+- U/Ctrl+U underline uses Discord-style __text__; highlight uses ==text==. Other Markdown apps may differ.
+- History records significant changes no less than 180,000 ms apart per note, including manual savepoints. Undo handles recent edits; browser draft autosave stays immediate.
+- First Ctrl+S selects a file/location; subsequent Ctrl+S updates the same file.
 
-Latest September 11 refinements override earlier toolbar preferences: font size is fixed at 16 with interface Zoom in its place; line spacing is Settings-only; Sidebar toggle sits at the left of the toolbar; Find sits at the right; only Heading 1 and Heading 2 are offered, with modest sizing. Plain domains in the link dialog normalize to HTTPS.
+## Implemented capabilities
 
-History now has a visible toolbar button. It keeps the latest 25 savepoints per note, labels major edit boundaries and writing sessions, supports a manual savepoint, previews saved text, and can restore in place (saving the current version first) or restore as a copy. It remains browser-local and included in JSON backups, not downloaded Markdown. New tests: `node tests/history-url.cjs`. Interactive browser testing remains pending.
+Formatted and raw editing, basic Markdown parsing/serialization, fonts, bold/italic/underline and active states, paragraph selector, quotes, ordered/bullet/check lists, code, strike/highlight/divider, selection-only clear formatting, grouped undo, compact Find/Replace, automatic websites, link editing/removal, paste-to-link.
 
-- Basic Markdown notes with compact, Notepad-like vertical spacing.
-- A few familiar fonts and a small font-size range.
-- Default to one editable formatted view, similar to the simple writing experience in Notion.
-- Keep optional Markdown, Split, and Preview views.
-- Recognize typed website addresses automatically.
-- Offer click-to-format controls, including selecting text and clicking Quote.
-- Underline button and Ctrl+U; the app uses Discord-style `__text__` for underline.
-- Keep three line-spacing tiers directly accessible: Compact 1.3, Normal 1.5, Relaxed 1.8.
-- Keep the interface understandable and uncomplicated.
-- Standalone local HTML was explicitly chosen over hosting.
+Notes search, pin/sort, rename/duplicate, Trash/restore, heading outline, remembered positions, draggable split, focus, themes, wrap, text zoom, spellcheck, shortcuts, printing.
 
-## Implemented features
+Enter on an empty quote line exits the quote. Backspace/Enter on an empty list item exits into a normal paragraph without removing earlier/later items. List exit owns list items inside quotes. Ordered start numbers are now preserved. Nonempty items and Shift+Enter remain native behavior.
 
-### Editing
+## Storage and saving
 
-Formatted Write, raw Markdown, Split, and read-only Preview; basic Markdown rendering; fonts and sizes; bold/italic/underline; headings; quotes; lists; inline/fenced code; checkboxes; strikethrough; highlights; dividers; clear formatting; undo/redo; Find/Replace; automatic website links; link options; paste a URL onto selected text.
+- localStorage key rotepad.library.v2; legacy rotepad.draft.v1 migration remains.
+- Library stores notes, revisions, preferences, positions and metadata.
+- File System Access API provides Save, Save as (Ctrl+Shift+S), and open-file association on supporting browsers.
+- File handles cached per note and stored in IndexedDB rotepad-file-links / handles. Browser may request permission again after reopening.
+- Unsupported browsers get an explanation and explicit Download a copy fallback.
+- Successful stream close is required before marking disk content saved.
+- History keeps up to 25 spaced savepoints per note. Restore in place or as copy. During cooldown, displaced content can be preserved in a separate (before restore).md note.
+- JSON backup format rotepad-backup, version 1; restores add independent copies. Includes revisions and Trash. Markdown files contain current text only, not history.
+- Browser storage is profile/origin specific. Export/import backup when moving browsers or environments.
 
-Quote is a visible toolbar button. Underline has Ctrl+U. Rich editing uses contenteditable and browser editing commands; raw editing uses a textarea. Markdown is serialized from the formatted DOM.
+## Architecture and cautions
 
-### Navigation and display
+One self-contained HTML file. Rich editor uses contenteditable/browser commands; source uses textarea; custom parser and serializer. Several incremental wrappers and old handlers coexist: read the full function/event chain before editing.
 
-Searchable notes sidebar; sort by recently edited, alphabetical, or newest; pinning; rename/duplicate; Trash and restore; heading outline; remembered cursor/scroll positions; resizable split view; focus mode; font/size controls; three line-spacing tiers; full-width or centered column; dark/light/system theme; word wrap; interface zoom; spellcheck toggle; shortcuts guide.
+Text zoom adjusts --size, not body zoom. Find/Outline source scrolling uses the scaled size. List exit handles keydown/beforeinput; quote handler skips list items. Keep offline operation and existing user data intact. This is local app work, not a registered hosted Site.
 
-### Saving and recovery
+## Tests and limits
 
-Browser autosave; open Markdown/plain-text files as notes; download Markdown; per-note file-export comparison indicator; draft revisions and restore-as-new-note; JSON backup/restore of all notes, including Trash and revisions; print/Save as PDF layout.
-
-Backup restore adds separate copies rather than replacing existing notes. There is no permanent-delete flow. A requested file download is not proof the browser saved the file successfully.
-
-## Storage and architecture
-
-- One HTML file contains the CSS and JavaScript; do not introduce required network dependencies casually.
-- Primary localStorage key: `rotepad.library.v2`.
-- Legacy draft key: `rotepad.draft.v1`; migration exists.
-- Library includes notes, active note ID, preferences, font, size, and view mode.
-- Notes may include revisions, pinned/trashed state, creation/update times, remembered positions, and a file-export signature.
-- Browser storage is specific to the browser/profile/origin. Do not promise that opening the HTML in another browser transfers notes. Use backup export/import for transfer.
-- Backup format identifier: `rotepad-backup`, version 1.
-- Underline and highlight are extensions: `__text__` and `==text==`. Other Markdown apps may interpret them differently.
-- Source has accumulated wrappers and event handlers over several iterations. Read the full relevant flow before changing a function. Older rich-history code coexists with newer per-note history handling.
-
-## Verification so far
-
-The existing Node checks passed during development, including recent underline, quote, and spacing edits. These are syntax and isolated logic tests, with minimal node fixtures for serialization. They are **not** end-to-end browser tests.
-
-Run from the workspace:
+All nine scripts passed after the latest change:
 
 ```powershell
 node tests/formatting.cjs
@@ -81,20 +77,20 @@ node tests/library.cjs
 node tests/backup.cjs
 node tests/comfort.cjs
 node tests/simplification.cjs
+node tests/history-url.cjs
+node tests/quote-exit.cjs
+node tests/file-save.cjs
+node tests/list-zoom.cjs
 ```
 
-Some test output labels contain historical test counts that were not updated when assertions were added. Do not report those labels as an audited total.
+Tests cover serialization, storage/backup, history spacing, undo grouping, URL normalization, inline clearing, quote detection, mocked same-file saving, list splitting, and zoom calculations. Some printed counts are historical; do not report them as audited totals.
 
-No comprehensive interactive browser QA has been completed. The last review was explicitly code-based. Do not claim that cursor behavior, visual layout, or browser editing was verified through interaction.
+No comprehensive interactive browser QA has been performed. These tests do not establish native picker, selection, layout, or contenteditable behavior. Use isolated/disposable browser data for future checks; do not overwrite personal notes or files.
 
-## Known review findings / next work
+## Continuation protocol
 
-See ROADMAP.md for priorities and acceptance criteria. Specific findings:
-
-- The prior toolbar, Settings, active-formatting, paragraph-menu, Find/Focus, grouped-undo, and Clear-formatting issues were addressed on September 11; verify behavior interactively before considering the UX fully audited.
-- Grouping uses beforeinput metadata, an inactivity threshold of 900 ms, and pointer/navigation/command boundaries. Tests cover grouping and redo-branch replacement.
-- Clear formatting lifts selected text out of inline wrappers, retaining unselected styled siblings and block containers. The new test includes partial unwrapping within a heading inside a quote.
-- Quote/list exit behavior and selection preservation need browser checks.
-- Custom parsing/serialization and repeated DOM transformations deserve round-trip and typing checks before expanding formatting support.
-
-Preserve existing notes and backups. Use disposable data for verification. The user has requested a simple tool; the next suggested direction is consolidation and reliability, not another large feature batch.
+1. Read this document, ROADMAP.md, and latest changelog entry.
+2. Inspect repository state and relevant source; preserve unrelated work.
+3. Follow the user's new scope and current preferences.
+4. Test affected behavior and state verification limits honestly.
+5. Append a real GMT+8 timestamp to changelog.md and refresh handoff/roadmap.

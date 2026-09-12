@@ -34,3 +34,5 @@ Desktop.ini
 
 # Local tool runtime
 .sites-runtime/
+# Local font conversion tools
+.font-build-deps/
