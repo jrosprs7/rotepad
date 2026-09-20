@@ -1,0 +1,13 @@
+const fs = require('node:fs');
+const path = require('node:path');
+const root = path.resolve(__dirname, '..');
+fs.mkdirSync(path.join(__dirname, 'app'), { recursive: true });
+const html = fs.readFileSync(path.join(root, 'Rotepad.html'), 'utf8');
+const integration = fs.readFileSync(path.join(__dirname, 'integration.js'), 'utf8');
+const bootstrap=fs.readFileSync(path.join(__dirname,'library-bootstrap.js'),'utf8');
+const library=fs.readFileSync(path.join(__dirname,'library.js'),'utf8');
+const singleRow=fs.readFileSync(path.join(__dirname,'single-row.js'),'utf8');
+const printPreview=fs.readFileSync(path.join(__dirname,'print-preview.js'),'utf8');
+fs.writeFileSync(path.join(__dirname, 'app', 'Rotepad.html'), html.replace('const narrow=window.innerWidth<850;','const narrow=window.innerWidth<850||Boolean(window.rotDesktop);').replace('<script>','<script>\n'+bootstrap+'\n</script>\n<script>').replace('</body>', '<script>\n' + integration + '\n'+library+'\n'+singleRow+'\n'+printPreview+'\n</script>\n</body>'));
+fs.copyFileSync(path.join(root, 'FONT-LICENSE.txt'), path.join(__dirname, 'app', 'FONT-LICENSE.txt'));
+for(const name of ['rotepad.ico','rotepad.png'])fs.copyFileSync(path.join(__dirname,'assets',name),path.join(__dirname,'app',name));

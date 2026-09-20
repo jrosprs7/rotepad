@@ -1,0 +1,18 @@
+const {contextBridge, ipcRenderer} = require('electron');
+contextBridge.exposeInMainWorld('rotDesktop', {
+  save: data => ipcRenderer.invoke('note-save', data),
+  open: () => ipcRenderer.invoke('note-open'),
+  bind: data => ipcRenderer.invoke('note-bind', data),
+  files: () => ipcRenderer.invoke('note-files'),
+  showInFolder: id => ipcRenderer.invoke('note-show-in-folder', id),
+  printPreview: options => ipcRenderer.invoke('print-preview', options),
+  printOutput: data => ipcRenderer.invoke('print-output', data),
+  settings: () => ipcRenderer.invoke('desktop-settings'),
+  chooseFolder: () => ipcRenderer.invoke('choose-folder'),
+  ready: () => ipcRenderer.invoke('desktop-ready'),
+  libraryInitial: () => ipcRenderer.sendSync('library-initial'),
+  librarySave: text => ipcRenderer.invoke('library-save',text),
+  closeFinish: approved => ipcRenderer.invoke('close-finish',approved),
+  onClose: callback => {ipcRenderer.on('request-close',()=>callback());},
+  onOpen: callback => {ipcRenderer.on('opened-note',(_event,file)=>callback(file));}
+});

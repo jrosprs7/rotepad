@@ -7,6 +7,7 @@ const js = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 new vm.Script(js);
 const context = { URL };
 vm.createContext(context);
+vm.runInContext(js.slice(js.indexOf('function tableCells'),js.indexOf('const optionalAutoFormat')),context);
 vm.runInContext(js.slice(js.indexOf('const escapeHTML'), js.indexOf('function persist')) +
   js.slice(js.indexOf('function markdownText'), js.indexOf('function markAutoLinks')), context);
 // Minimal node fixtures exercise the serializer without a browser dependency.
@@ -48,10 +49,12 @@ assert.match(context.markdown('- [ ] first\n- [x] second'), /aria-checked="false
 assert.match(context.markdown('- [ ] first\n- [x] second'), /aria-checked="true"/);
 assert.match(context.inline('~~old~~ ==new=='), /<del>old<\/del> <mark>new<\/mark>/);
 assert.ok(!context.inline('www\\.facebook\\.com').includes('<a'));
+assert.equal(context.inline('**bold*'),'**bold*');
+assert.equal(context.inline('**bold**'),'<strong>bold</strong>');
 vm.runInContext(js.slice(js.indexOf('function findMatches'), js.indexOf('let findHits')), context);
 assert.equal(context.findMatches('One one ONE', 'one').length, 3);
 assert.equal(context.findMatches('One one ONE', 'one', true).length, 1);
 assert.equal(context.findMatches('a.b aXb a.b', 'a.b').length, 2);
 assert.equal(context.findMatches('hello', '').length, 0);
 assert.equal(context.findMatches('[x] plus [x]', '[x]').length, 2);
-console.log('JavaScript syntax and 23 formatting, serialization, checkbox, link, and search checks passed.');
+console.log('JavaScript syntax and formatting, serialization, checkbox, link, and search checks passed.');

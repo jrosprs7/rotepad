@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <title>Rotepad — r. on a notepad</title>
+  <g transform="rotate(-12 256 256)" stroke="#182426" stroke-width="7" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M94 112 Q94 78 127 78 H375 Q403 78 403 109 V410 L103 433 Q94 435 94 421Z" fill="#06b6b8"/>
+    <path d="M113 126 H402 V410 Q402 425 388 437 H128 Q113 437 113 420Z" fill="#d7e0e1"/>
+    <path d="M128 414 H385 M129 425 H379" fill="none" stroke-width="4"/>
+    <path d="M117 117 H403 V407 H117Z" fill="#fffef9"/>
+    <path d="M94 114 V105 Q94 76 123 76 H375 Q403 76 403 105 V128 H120 Q117 98 102 99 Q94 100 94 114Z" fill="#cbd9dd"/>
+    <path d="M118 143 V393" fill="none" stroke="#e1e7e6" stroke-width="3"/>
+    <text x="261" y="338" text-anchor="middle" font-family="Georgia, serif" font-size="226" font-weight="700" letter-spacing="-9" fill="#101919" stroke="none">r.</text>
+  </g>
+</svg>

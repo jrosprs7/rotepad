@@ -1,0 +1,40 @@
+{
+  "name": "rotepad-desktop",
+  "version": "0.7.1",
+  "description": "Rotepad offline Markdown editor — Windows preview",
+  "author": "Rotepad",
+  "private": true,
+  "main": "main.cjs",
+  "scripts": {
+    "prepare-app": "node prepare.cjs",
+    "dist": "node prepare.cjs && electron-builder --win portable nsis --x64 --publish never"
+  },
+  "build": {
+    "appId": "com.rotepad.editor",
+    "productName": "Rotepad",
+    "directories": {
+      "output": "../dist"
+    },
+    "files": [
+      "main.cjs",
+      "markdown-store.cjs",
+      "preload.cjs",
+      "app/**",
+      "package.json"
+    ],
+    "win": {
+      "target": "portable",
+      "icon": "assets/rotepad.ico",
+      "signExecutable": false
+    },
+    "portable": {
+      "artifactName": "Rotepad-${version}-Windows.exe"
+    },
+    "nsis": {"oneClick":false,"perMachine":true,"allowToChangeInstallationDirectory":true,"artifactName":"Rotepad-${version}-Setup.exe","deleteAppDataOnUninstall":false},
+    "fileAssociations": [{"ext":["md","markdown"],"name":"Rotepad Markdown document","description":"Markdown document","role":"Editor"}]
+  },
+  "devDependencies": {
+    "electron": "^44.3.0",
+    "electron-builder": "^26.15.3"
+  }
+}

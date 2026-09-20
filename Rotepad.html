@@ -181,11 +181,11 @@ function inline(s){
  let out='',i=0;
  while(i<s.length){const rest=s.slice(i);let m;
   if((m=/^[^\s<>`*]*\\\.[^\s<>`*]*/.exec(rest))){out+='<span data-no-link="true">'+escapeHTML(m[0].replace(/\\\./g,'.'))+'</span>';i+=m[0].length;continue}
-  if((m=/^\\([\\`*_\[\]~])/.exec(rest))){out+=escapeHTML(m[1]);i+=m[0].length;continue}
+  if((m=/^\\([\\`*_\[\]~|])/.exec(rest))){out+=escapeHTML(m[1]);i+=m[0].length;continue}
   if((m=/^`([^`]+)`/.exec(rest))){out+='<code>'+escapeHTML(m[1])+'</code>';i+=m[0].length;continue}
   if((m=/^\[([^\]]+)\]\((https?:\/\/[^\s]+?)\)/.exec(rest))){const u=safeURL(m[2]);out+=u?'<a href="'+escapeHTML(u)+'" target="_blank" rel="noopener noreferrer">'+escapeHTML(m[1])+'</a>':escapeHTML(m[0]);i+=m[0].length;continue}
   if((m=/^\*\*(.+?)\*\*/.exec(rest))){out+='<strong>'+inline(m[1])+'</strong>';i+=m[0].length;continue}
-  if((m=/^\*([^*]+)\*/.exec(rest))){out+='<em>'+inline(m[1])+'</em>';i+=m[0].length;continue}
+  if((i===0||s[i-1]!=='*')&&(m=/^\*([^*]+)\*/.exec(rest))){out+='<em>'+inline(m[1])+'</em>';i+=m[0].length;continue}
   if((m=/^__(.+?)__/.exec(rest))){out+='<u>'+inline(m[1])+'</u>';i+=m[0].length;continue}
   if((m=/^~~(.+?)~~/.exec(rest))){out+='<del>'+inline(m[1])+'</del>';i+=m[0].length;continue}
   if((m=/^==(.+?)==/.exec(rest))){out+='<mark>'+inline(m[1])+'</mark>';i+=m[0].length;continue}
@@ -202,10 +202,11 @@ function inline(s){
 function markdown(text){
  const lines=text.replace(/\r\n?/g,'\n').split('\n');let out='',list='',code=null;
  const close=()=>{if(list){out+='</'+list+'>';list=''}};
- for(const line of lines){let m;
+ for(let lineIndex=0;lineIndex<lines.length;lineIndex++){const line=lines[lineIndex];let m;
   if(/^\s*```/.test(line)){close();if(code!==null){out+='<pre><code>'+escapeHTML(code.join('\n'))+'</code></pre>';code=null}else code=[];continue}
   if(code!==null){code.push(line);continue}
-  if((m=/^\s*([-+*]|\d+\.)\s+(.*)$/.exec(line))){const type=/\d/.test(m[1])?'ol':'ul';if(list!==type){close();out+='<'+type+(type==='ol'&&parseInt(m[1],10)!==1?' start='+String(parseInt(m[1],10)):'')+'>';list=type}const task=/^\[([ xX])\]\s?(.*)$/.exec(m[2]);out+=task?taskHTML(task[2],task[1].toLowerCase()==='x'):'<li>'+inline(m[2])+'</li>';continue}close();
+  if(lineIndex+1<lines.length&&line.includes('|')&&tableSeparator(lines[lineIndex+1])){close();const rows=[tableCells(line)];lineIndex++;while(lineIndex+1<lines.length&&lines[lineIndex+1].trim()&&lines[lineIndex+1].includes('|'))rows.push(tableCells(lines[++lineIndex]));out+=tableHTML(rows);continue;}
+  if(/^\s*([-+*]|\d+\.)\s+/.test(line)){close();const items=[line];while(lineIndex+1<lines.length&&/^\s*([-+*]|\d+\.)\s+/.test(lines[lineIndex+1]))items.push(lines[++lineIndex]);out+=nestedListHTML(items);continue;}close();
   if((m=/^(#{1,6})\s+(.*)$/.exec(line))){out+='<h'+m[1].length+'>'+inline(m[2])+'</h'+m[1].length+'>'}
   else if((m=/^>\s?(.*)$/.exec(line)))out+='<blockquote>'+inline(m[1])+'</blockquote>';
   else if(/^\s*---+\s*$/.test(line))out+='<hr>';
@@ -246,6 +247,7 @@ function markdownText(s){return s.replace(/\u00a0/g,' ').replace(/([\\*_`\[\]])/
 function richMarkdown(){
  function content(node){return [...node.childNodes].map(visit).join('')}
  function visit(n){if(n.nodeType===3)return markdownText(n.data);if(n.nodeType!==1)return '';const tag=n.tagName,t=content(n);
+  if(tag==='TABLE'){const rows=[...n.rows].map(row=>[...row.cells].map(cell=>content(cell).replace(/\n$/,'').replace(/\n/g,'<br>').replace(/\|/g,'\\|')));if(!rows.length)return '';return [rows[0],rows[0].map(()=>'---'),...rows.slice(1)].map(row=>'| '+row.join(' | ')+' |').join('\n')+'\n';}
   if(tag==='BR')return '\n';
   if(tag==='STRONG'||tag==='B')return '**'+t+'**';
   if(tag==='EM'||tag==='I')return '*'+t+'*';
@@ -258,7 +260,7 @@ function richMarkdown(){
   if(tag==='A'){const href=safeURL(n.getAttribute('href'));return href?'['+t+']('+href.replace(/\(/g,'%28').replace(/\)/g,'%29')+')':t}
   if(tag==='PRE')return '```\n'+n.textContent.replace(/\n$/,'')+'\n```\n';
   if(tag==='HR')return '---\n';
-  if(tag==='UL'||tag==='OL')return [...n.children].map((li,i)=>(tag==='UL'?'- ':(i+(Number(n.getAttribute('start'))||1))+'. ')+(li.getAttribute('data-checked')!==null&&li.getAttribute('data-checked')!==undefined?'['+(li.getAttribute('data-checked')==='true'?'x':' ')+'] ':'')+content(li).replace(/\n$/,'')+'\n').join('');
+  if(tag==='UL'||tag==='OL')return (n.parentElement?.tagName==='LI'?'\n':'')+[...n.children].map((li,i)=>(tag==='UL'?'- ':(i+(Number(n.getAttribute('start'))||1))+'. ')+(li.getAttribute('data-checked')!==null&&li.getAttribute('data-checked')!==undefined?'['+(li.getAttribute('data-checked')==='true'?'x':' ')+'] ':'')+content(li).replace(/\n$/,'').replace(/\n/g,'\n    ')+'\n').join('');
   if(/^H[1-6]$/.test(tag))return '#'.repeat(Number(tag[1]))+' '+t.replace(/\n$/,'')+'\n';
   if(tag==='BLOCKQUOTE')return t.replace(/\n$/,'').split('\n').map(l=>'> '+l).join('\n')+'\n';
   if(tag==='P'||tag==='DIV')return (t==='\n'?'':t.replace(/\n$/,''))+'\n';
@@ -275,7 +277,7 @@ function autoFormatRich(){
  const selection=getSelection();if(!selection.isCollapsed||!rich.contains(selection.anchorNode))return;
  let offset=caretOffset();
  const bookmark=document.createElement('span');bookmark.dataset.caret='true';selection.getRangeAt(0).insertNode(bookmark);
- if(rich.childNodes.length&&![...rich.children].some(n=>/^(P|DIV|H[1-6]|UL|OL|BLOCKQUOTE|PRE|HR)$/.test(n.tagName))){const p=document.createElement('p');p.append(...rich.childNodes);rich.append(p)}
+ if(rich.childNodes.length&&![...rich.children].some(n=>/^(P|DIV|H[1-6]|UL|OL|BLOCKQUOTE|PRE|HR|TABLE)$/.test(n.tagName))){const p=document.createElement('p');p.append(...rich.childNodes);rich.append(p)}
  // Re-detect automatically created links so editing their address also updates the destination.
  rich.querySelectorAll('a[data-auto]').forEach(a=>a.replaceWith(...a.childNodes));rich.normalize();
  const walker=document.createTreeWalker(rich,NodeFilter.SHOW_TEXT),nodes=[];let node;while(node=walker.nextNode())nodes.push(node);
@@ -290,7 +292,7 @@ function autoFormatRich(){
   n.replaceWith(temp.content);
  }
  const caret=document.createRange();caret.setStartBefore(bookmark);caret.collapse(true);bookmark.remove();selection.removeAllRanges();selection.addRange(caret);markAutoLinks();
- if(exitInline?.isConnected){const r=document.createRange();r.setStartAfter(exitInline);r.collapse(true);getSelection().removeAllRanges();getSelection().addRange(r)}
+ if(exitInline?.isConnected){const r=document.createRange();r.setStartAfter(exitInline);r.collapse(true);getSelection().removeAllRanges();getSelection().addRange(r);for(const command of ['bold','italic','underline'])if(document.queryCommandState(command))document.execCommand(command,false,null);normalAfterMarkdown=true}
  // Convert Markdown block prefixes when the user types their following space.
  const current=getSelection().anchorNode;const block=(current?.nodeType===3?current.parentElement:current)?.closest('p,div');
  if(block&&rich.contains(block)&&block!==rich&&/^(#{1,6}|[-+*]|1\.|>)[ \u00a0]$/.test(block.textContent)){
@@ -654,6 +656,206 @@ rich.addEventListener('keydown',exitEmptyList,true);rich.addEventListener('befor
 editor.addEventListener('keydown',e=>{if(!['Enter','Backspace'].includes(e.key)||e.shiftKey||e.ctrlKey||e.metaKey||e.altKey||e.isComposing||editor.selectionStart!==editor.selectionEnd)return;const at=editor.selectionStart,start=at?editor.value.lastIndexOf('\n',at-1)+1:0,boundary=editor.value.indexOf('\n',at),end=boundary<0?editor.value.length:boundary;if(!/^\s*(?:\d+\.|[-+*])\s*(?:\[[ xX]\]\s*)?$/.test(editor.value.slice(start,end)))return;e.preventDefault();breakTypingGroup();insert('',start,end)},true);
 // Adopt the requested default once; later font choices remain saved normally.
 if(!prefs.iosevkaDefaultVersion){$('font').value='Iosevka SS03 Extended';prefs.iosevkaDefaultVersion=1;fonts()}
+
+// A Backspace immediately after automatic Markdown conversion restores literal text.
+let autoFormatRevert=null,normalAfterMarkdown=false;
+const convertMarkdownRich=autoFormatRich;
+autoFormatRich=function(){
+ const before=rich.innerHTML,beforeText=rich.textContent,at=caretOffset();
+ autoFormatRevert=null;convertMarkdownRich();
+ if(beforeText!==rich.textContent)autoFormatRevert={html:before,at,after:rich.innerHTML,caret:caretOffset(),id:activeId};
+};
+function revertAutomaticMarkdown(e){
+ if(e.key!=='Backspace'||e.ctrlKey||e.metaKey||e.altKey||e.shiftKey||e.isComposing)return;
+ const state=autoFormatRevert,selection=getSelection();
+ if(!state||state.id!==activeId||!selection.isCollapsed||!rich.contains(selection.anchorNode)||rich.innerHTML!==state.after||caretOffset()!==state.caret)return;
+ e.preventDefault();e.stopImmediatePropagation();autoFormatRevert=null;breakTypingGroup();
+ rich.innerHTML=state.html;
+ // Keep the canceled syntax literal on subsequent keystrokes and round trips.
+ const walker=document.createTreeWalker(rich,NodeFilter.SHOW_TEXT),literal=[];let node;
+ while(node=walker.nextNode())if(!node.parentElement.closest('a,code,pre,.task-box,[data-no-link]')&&inline(node.data)!==escapeHTML(node.data))literal.push(node);
+ for(const text of literal){const span=document.createElement('span');span.dataset.noLink='true';span.dataset.literalMarkdown='true';text.replaceWith(span);span.append(text);}
+ placeCaret(state.at);rememberRange();commitRich();updateFormatting();
+}
+rich.addEventListener('keydown',revertAutomaticMarkdown,true);
+document.addEventListener('pointerdown',()=>{autoFormatRevert=null;},true);
+document.addEventListener('keydown',e=>{if(e.key!=='Backspace')autoFormatRevert=null;},true);
+$('spellcheck-setting').title='Check spelling as you type. Turn off to hide spelling marks.';
+$('shortcuts-dialog').insertAdjacentHTML('beforeend','<p class="side-note">Immediately after automatic Markdown formatting, press Backspace to keep the original symbols as plain text.</p>');
+
+// Embedded in Rotepad.html; no runtime dependency on this file.
+const compactStyle=document.createElement('style');
+compactStyle.textContent=`
+header{padding:10px 16px;gap:10px;flex-wrap:nowrap!important;min-width:0}
+header .brand{flex-shrink:0}header #filename{flex:1;min-width:50px;width:150px}header .file-actions{flex-shrink:0;width:auto!important;gap:5px}
+.toolbar{padding:7px 16px;gap:6px;flex-wrap:nowrap!important;min-height:48px;flex-shrink:0}
+.toolbar .compact-core,.toolbar .compact-visible{display:flex;align-items:center;gap:5px;flex-wrap:nowrap}
+.toolbar .compact-core{flex-shrink:0}.toolbar .compact-visible{flex:1;min-width:0;overflow:hidden}
+.toolbar .compact-visible>*{flex-shrink:0}.toolbar .compact-visible .group{gap:5px}
+.toolbar button,.toolbar select,.toolbar summary{height:34px;min-height:34px;box-sizing:border-box}
+.toolbar .compact-core button,.toolbar [data-format=quote],.toolbar #link,.toolbar #find-toggle,.toolbar #more-format>summary{width:34px;min-width:34px;padding:5px;display:grid;place-items:center}
+.toolbar #find-toggle{margin-left:0;flex-shrink:0}.toolbar #more-format{flex-shrink:0}
+.toolbar #more-format>summary{list-style:none;font-size:22px;line-height:1}.toolbar #more-format>summary::-webkit-details-marker{display:none}
+.toolbar #font{width:155px;max-width:155px}.toolbar #toolbar-zoom{width:76px;min-width:76px}.toolbar #paragraph-style{width:126px;max-width:126px}
+.compact-visible label{display:none!important}.toolbar .more-menu{right:0;left:auto;top:40px;z-index:40;width:280px;max-width:calc(100vw - 24px);max-height:70dvh;overflow:auto;gap:5px;padding:10px}
+#overflow-controls{display:grid;gap:8px;border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:3px}#overflow-controls:empty{display:none}
+#overflow-controls>.group{display:grid;grid-template-columns:55px 1fr;gap:8px}#overflow-controls label{display:block!important;font-size:13px}
+#overflow-controls #font,#overflow-controls #toolbar-zoom,#overflow-controls #paragraph-style{width:100%;max-width:none}#overflow-controls>button{width:100%;text-align:left;display:block}
+.compact-app-panel>details>summary{border:0}.compact-app-panel>details>.app-menu-panel{position:static;box-shadow:none;border:0;border-left:2px solid var(--line);min-width:0;margin:3px 0 6px 8px;max-height:none;overflow:visible}
+@media(max-width:700px){header{padding:8px 10px}.toolbar{padding:6px 10px}.toolbar .compact-core,.toolbar .compact-visible{gap:4px}header .brand{font-size:17px}.toolbar{gap:4px}}
+@media(max-width:440px){header .brand{font-size:0;gap:0}header>.divider{display:none}.toolbar{padding:6px}.toolbar .compact-core{gap:3px}.toolbar button,.toolbar #more-format>summary{min-width:32px}.toolbar .compact-core button{width:32px}}
+@media print{#compact-app-menu{display:none!important}}
+`;
+document.head.append(compactStyle);
+const compactCore=document.createElement('div');compactCore.className='compact-core format';
+for(const node of [$('toggle-notes'),$('undo'),$('redo'),...['bold','italic','underline'].map(t=>document.querySelector('[data-format='+t+']'))])compactCore.append(node);
+const compactVisible=document.createElement('div');compactVisible.className='compact-visible format';
+const compactItems=[document.querySelector('[data-format=quote]'),$('paragraph-style'),$('link'),$('font').closest('.group'),zoomGroup,$('history-button')];
+const overflowControls=document.createElement('div');overflowControls.id='overflow-controls';overflowControls.className='format';
+morePanel.prepend(overflowControls);morePanel.classList.add('format');
+const overflowSummary=$('more-format').querySelector('summary');overflowSummary.textContent='»';overflowSummary.title='More tools';overflowSummary.setAttribute('aria-label','More tools');
+compactVisible.append(...compactItems);
+for(const child of [...mainToolbar.children])if(![$('find-toggle'),$('more-format')].includes(child))child.style.display='none';
+mainToolbar.append(compactCore,compactVisible,$('find-toggle'),$('more-format'));
+for(const option of $('font').options)if(option.value==='Iosevka SS03 Extended')option.textContent='Iosevka Extended';else if(option.value==='Iosevka Fixed SS03')option.textContent='Iosevka Fixed';
+$('font').title=$('font').value;$('font').addEventListener('change',()=>{$('font').title=$('font').value;});
+$('font').setAttribute('aria-label','Font');
+const compactApp=makeAppMenu('Menu','compact-app-menu');compactApp.panel.classList.add('compact-app-panel');topActions.append(compactApp.menu);
+const topMenuItems=[fileMenu.menu,viewMenu.menu,helpMenu.menu,$('settings')];
+let compactTop=null;
+function fitToolbar(){
+  // Move existing controls, retaining their listeners, state, and editor selection.
+  compactVisible.append(...compactItems);
+  while(compactVisible.scrollWidth>compactVisible.clientWidth+1&&compactVisible.lastElementChild)overflowControls.prepend(compactVisible.lastElementChild);
+  const narrow=window.innerWidth<850;
+  if(narrow!==compactTop){compactTop=narrow;compactApp.menu.open=false;for(const menu of topMenuItems)if(menu.tagName==='DETAILS')menu.open=false;if(narrow)compactApp.panel.append(...topMenuItems);else for(const node of topMenuItems)topActions.insertBefore(node,compactApp.menu);compactApp.menu.hidden=!narrow;}
+}
+new ResizeObserver(fitToolbar).observe(mainToolbar);fitToolbar();document.fonts.ready.then(fitToolbar);
+compactApp.menu.addEventListener('click',e=>{if(e.target.closest('button'))compactApp.menu.open=false;});
+document.addEventListener('pointerdown',e=>{if(!compactApp.menu.contains(e.target))compactApp.menu.open=false;});
+for(const menu of [compactApp.menu,$('more-format')])menu.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();menu.open=false;menu.querySelector('summary').focus();}});
+
+
+// Enter can clone the preceding inline style despite the collapsed typing state.
+rich.addEventListener('input',e=>{
+ const exit=normalAfterMarkdown;normalAfterMarkdown=false;
+ if(!exit||e.inputType!=='insertParagraph')return;
+ const s=getSelection();if(!s.rangeCount||!s.isCollapsed||!rich.contains(s.anchorNode))return;
+ const marker=document.createElement('span');s.getRangeAt(0).insertNode(marker);
+ let parent=marker.parentElement;
+ while(parent&&parent!==rich&&!/^(P|DIV|LI|BLOCKQUOTE)$/.test(parent.tagName)){
+  const next=parent.parentElement;if(/^(STRONG|B|EM|I|U|CODE)$/.test(parent.tagName))parent.replaceWith(...parent.childNodes);parent=next;
+ }
+ const r=document.createRange();r.setStartBefore(marker);r.collapse(true);marker.remove();s.removeAllRanges();s.addRange(r);
+ for(const command of ['bold','italic','underline'])if(document.queryCommandState(command))document.execCommand(command,false,null);
+},true);
+document.addEventListener('keydown',e=>{if(e.key!=='Enter')normalAfterMarkdown=false;},true);
+document.addEventListener('pointerdown',()=>{normalAfterMarkdown=false;},true);
+
+
+// Canceled syntax remains literal, but typing after it is a new normal text run.
+rich.addEventListener('beforeinput',e=>{
+ if(e.inputType!=='insertText'||e.isComposing||!e.data)return;
+ const s=getSelection();if(!s.isCollapsed||!rich.contains(s.anchorNode))return;
+ const el=(s.anchorNode.nodeType===3?s.anchorNode.parentElement:s.anchorNode).closest('[data-literal-markdown]');if(!el)return;
+ const tail=document.createRange();tail.selectNodeContents(el);tail.setStart(s.anchorNode,s.anchorOffset);if(tail.toString())return;
+ e.preventDefault();const text=document.createTextNode(e.data);el.after(text);
+ const r=document.createRange();r.setStart(text,text.length);r.collapse(true);s.removeAllRanges();s.addRange(r);
+ rich.dispatchEvent(new InputEvent('input',{bubbles:true,inputType:'insertText',data:e.data}));
+},true);
+
+// Embedded at the end of Rotepad.html's script.
+function tableCells(line){
+ const value=line.trim().replace(/^\|/,'').replace(/(?<!\\)\|$/,'');let cells=[],part='',escaped=false;
+ for(const ch of value){if(escaped){part+='\\'+ch;escaped=false;}else if(ch==='\\')escaped=true;else if(ch==='|'){cells.push(part.trim());part='';}else part+=ch;}
+ if(escaped)part+='\\';cells.push(part.trim());return cells;
+}
+function tableSeparator(line){return line.includes('|')&&tableCells(line).every(c=>/^:?-{3,}:?$/.test(c));}
+function tableHTML(rows){return '<table><thead><tr>'+rows[0].map(c=>'<th>'+inline(c).replace(/&lt;br\s*\/?&gt;/gi,'<br>')+'</th>').join('')+'</tr></thead><tbody>'+rows.slice(1).map(row=>'<tr>'+rows[0].map((_,i)=>'<td>'+(inline(row[i]||'').replace(/&lt;br\s*\/?&gt;/gi,'<br>')||'<br>')+'</td>').join('')+'</tr>').join('')+'</tbody></table>';}
+function nestedListHTML(lines){
+ const items=lines.map(line=>{const m=/^(\s*)([-+*]|\d+\.)\s+(.*)$/.exec(line);return {depth:m[1].replace(/\t/g,'    ').length,type:/\d/.test(m[2])?'ol':'ul',number:parseInt(m[2],10)||1,text:m[3]};});let at=0;
+ function group(depth){let html='';while(at<items.length&&items[at].depth>=depth){if(items[at].depth>depth){html+=group(items[at].depth);continue;}const type=items[at].type,start=items[at].number;html+='<'+type+(type==='ol'&&start!==1?' start="'+start+'"':'')+'>';while(at<items.length&&items[at].depth===depth&&items[at].type===type){const item=items[at++];let child='';if(at<items.length&&items[at].depth>depth)child=group(items[at].depth);const task=/^\[([ xX])\]\s?(.*)$/.exec(item.text);html+=task?taskHTML(task[2],task[1].toLowerCase()==='x').replace(/<\/li>$/,child+'</li>'):'<li>'+inline(item.text)+child+'</li>';}
+ html+='</'+type+'>';if(at<items.length&&items[at].depth<depth)break;}return html;}
+ let result='';while(at<items.length)result+=group(items[at].depth);return result;
+}
+function autoLinksOnly(){
+ const s=getSelection();if(!s.rangeCount||!s.isCollapsed||!rich.contains(s.anchorNode))return;
+ const marker=document.createElement('span');s.getRangeAt(0).insertNode(marker);
+ if(rich.childNodes.length&&![...rich.children].some(n=>/^(P|DIV|H[1-6]|UL|OL|BLOCKQUOTE|PRE|HR|TABLE)$/.test(n.tagName))){const p=document.createElement('p');p.append(...rich.childNodes);rich.append(p);}
+ rich.querySelectorAll('a[data-auto]').forEach(a=>a.replaceWith(...a.childNodes));rich.normalize();
+ const walker=document.createTreeWalker(rich,NodeFilter.SHOW_TEXT),nodes=[];let n;while(n=walker.nextNode())nodes.push(n);
+ for(const text of nodes){if(text.parentElement.closest('a,code,pre,.task-box,[data-no-link]'))continue;const html=writingLinks(text.data).slice(0,-1);if(html===escapeHTML(text.data))continue;const temp=document.createElement('template');temp.innerHTML=html;text.replaceWith(temp.content);}
+ const r=document.createRange();r.setStartBefore(marker);r.collapse(true);marker.remove();s.removeAllRanges();s.addRange(r);markAutoLinks();rememberRange();
+}
+const optionalAutoFormat=autoFormatRich;
+autoFormatRich=function(){if(prefs.autoMarkdown===true)optionalAutoFormat();else{autoFormatRevert=null;normalAfterMarkdown=false;autoLinksOnly();}};
+$('settings-dialog').querySelector('.settings-grid').insertAdjacentHTML('beforeend','<label for="auto-markdown-setting">Format Markdown as I type</label><input type="checkbox" id="auto-markdown-setting" title="Optional: turn typed Markdown markers into formatting. Buttons and shortcuts work either way.">');
+const formattedPrefs=applyPrefs;applyPrefs=function(){formattedPrefs();$('auto-markdown-setting').checked=prefs.autoMarkdown===true;};
+const formattedRestorePrefs=restoredPrefs;restoredPrefs=function(p){return {...formattedRestorePrefs(p),autoMarkdown:p.autoMarkdown===true};};
+$('auto-markdown-setting').onchange=()=>{prefs.autoMarkdown=$('auto-markdown-setting').checked;autoFormatRevert=null;normalAfterMarkdown=false;persist();};
+const modeSwitch=document.createElement('button');modeSwitch.id='editing-mode';document.querySelector('footer').insertBefore(modeSwitch,$('position'));
+const formattedSetMode=setMode;setMode=function(value){formattedSetMode(value);modeSwitch.textContent={rich:'Formatted',write:'Markdown',split:'Split',preview:'Preview'}[value];modeSwitch.title=value==='rich'?'Switch to Markdown view':'Switch to Formatted view';$('position').hidden=value==='rich'||value==='preview';};
+modeSwitch.onclick=()=>setMode(mode==='rich'?'write':'rich');document.querySelector('[data-mode=rich]').textContent='Formatted';
+function editingAction(label,id,handler){const button=document.createElement('button');button.id=id;button.textContent=label;button.onmousedown=e=>{if(mode==='rich'){rememberRange();e.preventDefault();}};button.onclick=()=>{if(mode==='preview')return;breakTypingGroup();handler();};morePanel.append(button);return button;}
+function insertEditingText(text){if(mode==='rich'){restoreRange();document.execCommand('insertText',false,text);commitRich();}else insert(text);}
+function indentSelection(out=false){
+ if(mode==='rich'){
+  restoreRange();const s=getSelection(),node=s.anchorNode,el=node?.nodeType===3?node.parentElement:node;
+  if(el?.closest('li')){if(!out&&el.closest('li').previousElementSibling?.tagName!=='LI')return;document.execCommand(out?'outdent':'indent');for(const list of rich.querySelectorAll('ul>ul,ul>ol,ol>ul,ol>ol')){if(list.previousElementSibling?.tagName==='LI')list.previousElementSibling.append(list);}commitRich();return;}
+  const r=s.getRangeAt(0),blocks=[...rich.querySelectorAll('p,h1,h2,h3,blockquote,td,th')].filter(b=>r.intersectsNode(b)&&!b.querySelector('p,blockquote'));
+  if(!blocks.length){if(!out)insertEditingText('\t');return;}
+  for(const block of blocks){if(out){const first=block.firstChild;if(first?.nodeType===3)first.data=first.data.replace(/^(?:\t| {1,4})/,'');}else block.prepend(document.createTextNode('\t'));}rememberRange();commitRich();
+ }else{const a=editor.selectionStart,b=editor.selectionEnd,start=a?editor.value.lastIndexOf('\n',a-1)+1:0,last=b>a&&editor.value[b-1]==='\n'?b-1:b,boundary=editor.value.indexOf('\n',last),end=boundary<0?editor.value.length:boundary;insert(editor.value.slice(start,end).split('\n').map(l=>out?l.replace(/^(?:\t| {1,4})/,''):'\t'+l).join('\n'),start,end);}
+}
+editingAction('Increase indent','indent-note',()=>indentSelection(false));editingAction('Decrease indent','outdent-note',()=>indentSelection(true));
+editingAction('Insert date and time (F5)','insert-datetime',()=>insertEditingText(new Date().toLocaleString(undefined,{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})));
+dialogMarkup('table-dialog','<button class="dialog-close" data-close="table-dialog" aria-label="Close">×</button><h2>Insert table</h2><form id="table-form"><div class="settings-grid"><label for="table-columns">Columns</label><input id="table-columns" type="number" min="1" max="8" value="3" required><label for="table-rows">Rows, including header</label><input id="table-rows" type="number" min="2" max="20" value="3" required></div><div class="actions"><button type="submit" class="primary">Insert table</button></div></form>');
+let tableSelection=null;editingAction('Insert table…','insert-table',()=>{if(mode==='rich')rememberRange();tableSelection=[editor.selectionStart,editor.selectionEnd];$('table-dialog').showModal();$('table-columns').focus();});
+$('table-form').onsubmit=e=>{e.preventDefault();const cols=Number($('table-columns').value),rows=Number($('table-rows').value);if(!Number.isInteger(cols)||cols<1||cols>8||!Number.isInteger(rows)||rows<2||rows>20)return;const values=[Array.from({length:cols},(_,i)=>'Column '+(i+1)),...Array.from({length:rows-1},()=>Array(cols).fill(''))];$('table-dialog').close();if(mode==='rich'){restoreRange();document.execCommand('insertHTML',false,tableHTML(values)+'<p><br></p>');commitRich();}else{const text=[values[0],Array(cols).fill('---'),...values.slice(1)].map(row=>'| '+row.join(' | ')+' |').join('\n');insert('\n'+text+'\n',...tableSelection);}};
+document.addEventListener('keydown',e=>{if(document.querySelector('dialog[open]')||mode==='preview')return;if(e.key==='F5'){e.preventDefault();$('insert-datetime').click();}if((e.ctrlKey||e.metaKey)&&['[',']'].includes(e.key)&&[editor,rich].includes(document.activeElement)){e.preventDefault();indentSelection(e.key==='[');}},true);
+rich.addEventListener('keydown',e=>{if(e.key!=='Tab'||e.ctrlKey||e.metaKey||e.altKey)return;const n=getSelection().anchorNode,cell=(n?.nodeType===3?n.parentElement:n)?.closest('td,th');if(!cell)return;const table=cell.closest('table'),cells=[...table.querySelectorAll('th,td')],index=cells.indexOf(cell);let target=cells[index+(e.shiftKey?-1:1)];if(!target&&!e.shiftKey){const row=table.insertRow();for(let i=0;i<table.rows[0].cells.length;i++)row.insertCell().innerHTML='<br>';target=row.cells[0];commitRich();}if(target){e.preventDefault();const r=document.createRange();r.selectNodeContents(target);r.collapse(true);getSelection().removeAllRanges();getSelection().addRange(r);rememberRange();}},true);
+const formattedStyle=document.createElement('style');formattedStyle.textContent='.preview table{border-collapse:collapse;width:100%;margin:8px 0;table-layout:fixed}.preview th,.preview td{border:1px solid var(--line);padding:6px 8px;min-width:40px;white-space:pre-wrap;overflow-wrap:anywhere}.preview th{background:var(--soft);text-align:left}footer #editing-mode{font-size:12px;min-height:24px;padding:2px 8px}';document.head.append(formattedStyle);
+$('shortcuts-dialog').insertAdjacentHTML('beforeend','<p class="side-note">Ctrl+[ / Ctrl+] decreases/increases indent. F5 inserts the current date and time. Use the bottom Formatted/Markdown button to switch views. Automatic Markdown conversion is optional in Settings.</p>');
+applyPrefs();setMode('rich');
+
+// List continuation is independent of optional inline Markdown conversion.
+editingAction('Numbered list','numbered-list',()=>{
+ if(mode==='rich'){restoreRange();document.execCommand('insertOrderedList');commitRich();return;}
+ const a=editor.selectionStart,b=editor.selectionEnd,start=a?editor.value.lastIndexOf('\n',a-1)+1:0;
+ const last=b>a&&editor.value[b-1]==='\n'?b-1:b,tail=editor.value.indexOf('\n',last),end=tail<0?editor.value.length:tail;
+ const lines=editor.value.slice(start,end).split('\n'),remove=lines.every(line=>/^\s*\d+\.\s/.test(line));
+ insert(lines.map((line,i)=>{const match=/^(\s*)(.*)$/.exec(line);return match[1]+(remove?'':(i+1)+'. ')+match[2].replace(/^(?:\d+\.|[-+*])\s+/,'');}).join('\n'),start,end);
+});
+rich.addEventListener('keydown',event=>{
+ if(event.defaultPrevented||event.key!=='Enter'||event.shiftKey||event.ctrlKey||event.metaKey||event.altKey||event.isComposing||composing)return;
+ const selection=getSelection();if(!selection.rangeCount||!selection.isCollapsed)return;
+ const node=selection.anchorNode,element=node?.nodeType===3?node.parentElement:node;
+ if(!element||element.closest('li,pre,code'))return;
+ const block=element.closest('p,div');if(!block||block===rich||!rich.contains(block))return;
+ const match=/^(\d+)\.[ \u00a0]+(\S[\s\S]*)$/.exec(block.textContent);if(!match)return;
+ const tail=selection.getRangeAt(0).cloneRange();tail.setEnd(block,block.childNodes.length);if(tail.toString())return;
+ event.preventDefault();event.stopImmediatePropagation();breakTypingGroup();
+ // Remove only the marker, preserving bold, links and other inline content.
+ const prefix=block.textContent.length-match[2].length,walker=document.createTreeWalker(block,NodeFilter.SHOW_TEXT);
+ let remaining=prefix,text;const marker=document.createRange();marker.setStart(block,0);
+ while(text=walker.nextNode()){if(remaining<=text.length){marker.setEnd(text,remaining);break;}remaining-=text.length;}
+ marker.deleteContents();const caret=document.createRange();caret.selectNodeContents(block);caret.collapse(false);selection.removeAllRanges();selection.addRange(caret);
+ document.execCommand('insertOrderedList');const anchor=selection.anchorNode,list=(anchor.nodeType===3?anchor.parentElement:anchor).closest('ol');
+ if(list&&Number(match[1])!==1)list.start=Number(match[1]);
+ if(list){
+  if(list.parentElement===block&&block.childNodes.length===1)block.replaceWith(list);
+  const end=document.createRange();end.selectNodeContents(list.lastElementChild);end.collapse(false);selection.removeAllRanges();selection.addRange(end);
+ }
+ document.execCommand('insertParagraph');commitRich();
+},true);
+editor.addEventListener('keydown',event=>{
+ if(event.defaultPrevented||event.key!=='Enter'||event.shiftKey||event.ctrlKey||event.metaKey||event.altKey||event.isComposing||editor.selectionStart!==editor.selectionEnd)return;
+ const at=editor.selectionStart,start=at?editor.value.lastIndexOf('\n',at-1)+1:0;
+ const before=editor.value.slice(0,start);if((before.match(/^\s*```/gm)||[]).length%2)return;
+ const match=/^(\s*)(\d+)\.[ \t]+\S.*$/.exec(editor.value.slice(start,at));if(!match)return;
+ event.preventDefault();breakTypingGroup();insert('\n'+match[1]+(Number(match[2])+1)+'. ',at,at);
+},true);
+
 </script>
 </body>
 </html>

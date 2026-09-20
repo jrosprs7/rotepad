@@ -1,59 +1,66 @@
 # Rotepad roadmap
 
-Updated: 9/12/26 6:20 PM GMT+8.
+Remaining work as of 2026-09-20. Completed releases and verification are recorded in the [changelog](changelog.md). These proposals are not blanket authorization; follow the user's requested scope.
 
 ## Direction
 
-Keep an offline, uncomplicated Notepad-meets-Notion editor. Prioritize predictable editing and reliability over new features. Retain icon controls, Settings-only spacing, text-only zoom, two modest heading tiers, same-file saving, and three-minute-minimum History.
+Keep an offline, uncomplicated writing application with predictable editing and reliable local saving. Desktop is the main home for notes; a phone companion is a future goal. Preserve compact controls, text-only zoom, Settings-only spacing and per-note recovery history.
 
-Proposals below are not blanket authorization. Follow the user's next requested scope.
+## Known workspace issues
 
-## Completed
+These findings remain unresolved in the documentation. Reproduce against the current version before fixing; do not assume historical severity or implementation details still apply.
 
-- [x] Embedded Iosevka SS03 Extended (default) and Iosevka Fixed SS03, each with real bold and italic faces; preserve text zoom on font changes.
+- [ ] Restoring the last deleted note should reopen it, including the same-active-ID case.
+- [ ] Preserve an empty workspace after all notes are moved to Trash and the app restarts.
+- [ ] Creating a note while viewing Trash should switch the sidebar to Open/Library.
 
-- [x] File/View/Help menus and compact toolbar.
-- [x] Active formatting, paragraph selector, compact Find/Replace.
-- [x] Grouped typing undo and selected inline clearing.
-- [x] Sidebar/undo/redo/quote/find/link icons.
-- [x] Plain-domain links and paste-to-link.
-- [x] Spaced per-note major-change History.
-- [x] Save location picker, same-file Ctrl+S, Save as, file handles and fallback.
-- [x] Enter exits an empty quote line.
-- [x] Enter/Backspace exits an empty list item without merging into earlier text.
-- [x] Text-only zoom and adjusted Find/Outline scrolling.
-- [x] Timestamped changelog and refreshed handoff.
+Original reproductions are in the [0.5.1 QA report](docs/archive/QA-0.5.1.md). Its closed-note printing issue was resolved for desktop in 0.7.0 and is recorded in the changelog.
 
-## Priority 1: Interactive reliability checks
+## Reliability and interactive checks
 
-Use disposable notes, isolated browser storage and test files; preserve the user's real data.
+Use disposable notes, isolated profiles and test files.
 
-- [ ] Number items 1-3; Enter to 4; verify Backspace and Enter each exit numbering into a paragraph.
-- [ ] Test bullets, checkboxes, nested lists, lists inside quotes, and middle-of-list exits.
-- [ ] Test quotes, heading-to-paragraph transitions, Shift+Enter and blank blocks.
-- [ ] Check toolbar selection, mixed formatting, clear formatting, links and clipboard paste.
-- [ ] Check undo after typing, paste, formatting, list/quote exit and history restore.
-- [ ] Check cursor/scroll restoration across notes, views and zoom levels.
-- [ ] Test native Save/Save as/Open pickers, cancellation, failed writes, permission renewal and file-handle reload.
-- [ ] Check unsupported/in-app-browser fallback explains its limits.
-- [ ] Check History spacing across note switching/reload and minor edits.
+- [ ] Verify fresh Windows installation/upgrades, default-app selection, native Save/Open dialogs, cancellation and failed writes.
+- [ ] Verify physical printing, links, closing/reopening and prolonged desktop use.
+- [ ] Broaden interactive checks for bullets, checkboxes, nested lists, lists inside quotes and middle-of-list exits.
+- [ ] Verify heading/quote transitions, Shift+Enter, blank blocks, toolbar selection, mixed formatting, clipboard paste and clear formatting.
+- [ ] Verify undo after typing, paste, formatting, list/quote exit and history restore.
+- [ ] Verify cursor/scroll restoration across notes, views and zoom levels.
+- [ ] Verify browser file-permission renewal, handle reload and download fallback.
+- [ ] Verify history spacing across note switching/reload and minor edits, plus backup metadata/preferences/revision labels.
+- [ ] Check themes, narrow windows, wrapping, split resizing, outline and zoom at 80-150%.
+- [ ] Review print output and document whether screen text zoom should affect printing.
+- [ ] Broaden round-trip coverage for nested lists, multiline quotes, code, blank lines and ordered start numbers.
 
-## Priority 2: Layout and portability
+Existing tests cover some of these scenarios; these tasks concern broader/manual coverage. See [testing](docs/TESTING.md).
 
-- [ ] Verify text zoom at 80-150% leaves toolbar, sidebar and dialogs unchanged.
-- [ ] Check themes, narrow windows, wrapping, split resizing and outline.
-- [ ] Review print output and decide/document whether screen text zoom should affect print size.
-- [ ] Round-trip nested lists, multiline quotes, code, blank lines and ordered start numbers.
-- [ ] Verify backup preference/metadata/revision-label retention.
+## Editing feedback and maintenance
 
-## Priority 3: Maintenance
+- [ ] Gather feedback on the formatted workflow, tables and which toolbar controls should remain visible at narrow widths.
+- [ ] Consider explicit table row/column insertion and deletion controls.
+- [ ] Evaluate notification/reconciliation when managed files change externally during a session; startup reconciliation already exists.
+- [ ] Consolidate superseded handlers and wrappers while preserving behavior.
+- [ ] Clarify code boundaries between note state, UI preferences, undo and persistent revisions.
+- [ ] Extend browser interaction coverage as needed; remove stale fixed test-count labels.
 
-- [ ] Consolidate superseded handlers and function wrappers without changing behavior.
-- [ ] Clarify boundaries between note state, UI preferences, undo history and persistent revisions.
-- [ ] Add actual browser editing tests when authorized/available.
-- [ ] Correct stale fixed test-count labels or remove them.
-- [ ] Document browser-storage portability and migration.
+## Platforms and distribution
 
-## Documentation rule
+- [ ] macOS/Linux packaging and platform-specific checks.
+- [ ] Mobile layout and touch editing; evaluate PWA versus a mobile wrapper.
+- [ ] Consider code signing before wider Windows distribution.
+- [ ] Gather feedback from actual installer and portable use.
 
-After each completed change batch, append the actual date/time in GMT+8 to changelog.md with changes and verification. Update HANDOFF.md when behavior changes. Never invent timestamps for retrospective entries.
+## Phone companion and synchronization
+
+The eventual goal is automatic two-way sync with offline phone access and local PC storage preferred. Read-only phone viewing is an initial milestone. Storage, connection method, cloud/relay involvement and background behavior remain undecided; discuss these choices before implementation.
+
+- [ ] Choose the initial phone platform.
+- [ ] Evaluate authenticated pairing, encrypted transfers and device revocation over the same local network, without a required cloud account or hosted note storage.
+- [ ] Pair devices, sync selected notes and support offline viewing/search of downloaded notes.
+- [ ] Show last successful sync and pending updates. Both devices need to be awake, reachable and running the sync component to exchange new changes; cached phone notes should remain readable while the PC is off.
+- [ ] Begin with foreground/manual sync and investigate Android/iOS background limits separately.
+- [ ] Before phone editing, define stable IDs, versions, rename/deletion behavior, conflict preservation and recovery. Do not assume PC edits always win.
+- [ ] Evaluate remote access separately: direct connections/VPN, optional relay or a user-owned always-on device. Distinguish no cloud note storage from no external infrastructure.
+- [ ] Add phone editing and automatic two-way sync after the architecture and conflict rules are agreed.
+
+Sync is not a substitute for backups. Desktop reliability stays the first priority.

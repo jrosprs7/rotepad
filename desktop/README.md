@@ -1,0 +1,57 @@
+# Rotepad Windows development
+
+The Windows application wraps the shared editor in Electron. Read the [main README](../README.md) for features and note behavior, [architecture](../docs/ARCHITECTURE.md) for implementation, and [testing](../docs/TESTING.md) for checks.
+
+## Prerequisites and build
+
+Use Node.js and pnpm on Windows. Dependency versions are recorded in package.json and pnpm-lock.yaml. From this desktop directory:
+
+```powershell
+pnpm install --frozen-lockfile
+pnpm run prepare-app
+```
+
+To launch the development app with a disposable profile:
+
+```powershell
+$env:ROTEPAD_TEST_DATA = Join-Path $PWD ('test-profile/manual-' + [guid]::NewGuid().ToString('N'))
+pnpm exec electron .
+```
+
+To produce Windows x64 installer and portable builds:
+
+```powershell
+pnpm run dist
+```
+
+dist runs prepare.cjs before electron-builder with publishing disabled. The package version is currently 0.7.1; output filenames follow package.json:
+
+- ../dist/Rotepad-0.7.1-Setup.exe
+- ../dist/Rotepad-0.7.1-Windows.exe
+
+Building does not install the app. These are unsigned previews with no automatic update or publishing setup.
+
+## Assembly and generated files
+
+prepare.cjs copies Rotepad.html into app and injects library bootstrap, desktop integration, library management, the single-row toolbar and print preview. It copies icons and the font license as well. Always prepare after source changes before development runs or Electron tests.
+
+Edit source files, not app. Generated app, node_modules and test-profile are ignored locally; root dist is ignored by the repository.
+
+## Windows integration
+
+The installer uses a per-machine NSIS setup, allows choosing the installation directory and requires administrator approval. It registers .md/.markdown support; selecting Rotepad as the default application remains a Windows user choice. The portable executable does not register associations.
+
+The installer is configured to retain app data on uninstall. Notes live in managed Markdown files, with recovery and metadata in the app profile; see [storage and recovery](../docs/ARCHITECTURE.md#storage-and-recovery).
+
+Startup and already-running file opening, native pickers and Explorer integration are implemented. Automated checks mock external interactions; installation, upgrades, default-app selection and physical printing still require manual verification.
+
+## Icons
+
+assets/rotepad.svg is the source. render-icon.cjs produces the PNG and ICO using Playwright and Python with Pillow. Set PLAYWRIGHT_PATH and PYTHON_EXE to actual installed tool paths before regenerating. The PNG is used in the header; the ICO is used for Windows executable/window icons.
+
+## Tests and other platforms
+
+Follow [TESTING.md](../docs/TESTING.md) for commands and disposable-profile requirements. The installed and portable executables ignore the development test-profile override; use the development runtime for isolated tests.
+
+macOS/Linux packaging and phone work remain in the [roadmap](../ROADMAP.md).
+
