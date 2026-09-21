@@ -24,10 +24,10 @@ To produce Windows x64 installer and portable builds:
 pnpm run dist
 ```
 
-dist runs prepare.cjs before electron-builder with publishing disabled. The package version is currently 0.7.1; output filenames follow package.json:
+dist runs prepare.cjs before electron-builder with publishing disabled. Output filenames use the version in [package.json](package.json):
 
-- ../dist/Rotepad-0.7.1-Setup.exe
-- ../dist/Rotepad-0.7.1-Windows.exe
+- ../dist/Rotepad-<version>-Setup.exe
+- ../dist/Rotepad-<version>-Windows.exe
 
 Building does not install the app. These are unsigned previews with no automatic update or publishing setup.
 

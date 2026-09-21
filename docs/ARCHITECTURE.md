@@ -8,6 +8,8 @@ Several incremental function wrappers and event handlers coexist. Inspect the co
 
 tools/formatted-editor.js, tools/responsive-toolbar.js and tools/numbered-lists.js are editable references to code embedded in Rotepad.html. Updating a reference alone does not update the app; keep both copies synchronized. Numbered-list continuation works independently of optional automatic inline Markdown conversion.
 
+Typed numbered/bullet paragraphs convert to semantic lists on Enter at the actual DOM caret, using a bookmark to preserve inline boundaries. Existing semantic items retain native splitting; explicit handlers handle marker removal and nested outdent. keydown and beforeinput share typed-list logic. The Markdown parser groups indented continuation lines with their item, preserving ordinary Shift+Enter lines during view/reload conversion.
+
 Eight Iosevka faces (two families, four styles each) account for much of the HTML file size. Preserve their embedded data. tools/embed-fonts.py reproduces font embedding from the required source TTC using fonttools and brotli; the source font and conversion environment must be available before regenerating.
 
 ## Desktop assembly
@@ -22,7 +24,7 @@ desktop/prepare.cjs reads the root HTML and writes desktop/app/Rotepad.html. It 
 | desktop/integration.js | Native integration and desktop adaptations |
 | desktop/library.js | Library, workspace membership, autosave and close coordination |
 | desktop/markdown-store.cjs | Managed Markdown files, stable mapping, names, migration and reconciliation |
-| desktop/single-row.js | Desktop header and toolbar arrangement |
+| desktop/single-row.js | Desktop header/toolbar arrangement and screen-only minimalist styling for workspace, controls and status bar |
 | desktop/print-preview.js | Print preview UI and print/PDF workflow |
 
 Generated desktop/app, dist, dependencies and test profiles are ignored by Git. Regenerate desktop/app after source changes before launching development Electron tests or packaging.

@@ -7,8 +7,12 @@ function tableCells(line){
 function tableSeparator(line){return line.includes('|')&&tableCells(line).every(c=>/^:?-{3,}:?$/.test(c));}
 function tableHTML(rows){return '<table><thead><tr>'+rows[0].map(c=>'<th>'+inline(c).replace(/&lt;br\s*\/?&gt;/gi,'<br>')+'</th>').join('')+'</tr></thead><tbody>'+rows.slice(1).map(row=>'<tr>'+rows[0].map((_,i)=>'<td>'+(inline(row[i]||'').replace(/&lt;br\s*\/?&gt;/gi,'<br>')||'<br>')+'</td>').join('')+'</tr>').join('')+'</tbody></table>';}
 function nestedListHTML(lines){
- const items=lines.map(line=>{const m=/^(\s*)([-+*]|\d+\.)\s+(.*)$/.exec(line);return {depth:m[1].replace(/\t/g,'    ').length,type:/\d/.test(m[2])?'ol':'ul',number:parseInt(m[2],10)||1,text:m[3]};});let at=0;
- function group(depth){let html='';while(at<items.length&&items[at].depth>=depth){if(items[at].depth>depth){html+=group(items[at].depth);continue;}const type=items[at].type,start=items[at].number;html+='<'+type+(type==='ol'&&start!==1?' start="'+start+'"':'')+'>';while(at<items.length&&items[at].depth===depth&&items[at].type===type){const item=items[at++];let child='';if(at<items.length&&items[at].depth>depth)child=group(items[at].depth);const task=/^\[([ xX])\]\s?(.*)$/.exec(item.text);html+=task?taskHTML(task[2],task[1].toLowerCase()==='x').replace(/<\/li>$/,child+'</li>'):'<li>'+inline(item.text)+child+'</li>';}
+ const items=[];
+ for(const line of lines){const m=/^(\s*)([-+*]|\d+\.)\s+(.*)$/.exec(line);
+  if(m)items.push({depth:m[1].replace(/\t/g,'    ').length,type:/\d/.test(m[2])?'ol':'ul',number:parseInt(m[2],10)||1,text:m[3]});
+  else if(items.length){const last=items.at(-1);last.text+='\n'+line.replace(/\t/g,'    ').slice(last.depth+4);}
+ }let at=0;
+ function group(depth){let html='';while(at<items.length&&items[at].depth>=depth){if(items[at].depth>depth){html+=group(items[at].depth);continue;}const type=items[at].type,start=items[at].number;html+='<'+type+(type==='ol'&&start!==1?' start="'+start+'"':'')+'>';while(at<items.length&&items[at].depth===depth&&items[at].type===type){const item=items[at++];let child='';if(at<items.length&&items[at].depth>depth)child=group(items[at].depth);const task=/^\[([ xX])\]\s?([\s\S]*)$/.exec(item.text);html+=task?taskHTML(task[2],task[1].toLowerCase()==='x').replace(/<\/li>$/,child+'</li>'):'<li>'+item.text.split('\n').map(line=>inline(line)).join('<br>')+child+'</li>';}
  html+='</'+type+'>';if(at<items.length&&items[at].depth<depth)break;}return html;}
  let result='';while(at<items.length)result+=group(items[at].depth);return result;
 }

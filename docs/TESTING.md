@@ -64,9 +64,14 @@ node desktop/formatted-smoke.cjs
 node desktop/toolbar-smoke.cjs
 node desktop/bold-smoke.cjs
 node desktop/numbering-smoke.cjs
+node desktop/list-interactions-smoke.cjs
 ```
 
 They cover formatted defaults and view switching, literal typing and opt-in conversion, tables and indentation, responsive toolbar selection, inline formatting reversal, numbered continuation and empty-item exits. Select scripts according to the changed behavior.
+
+numbering-smoke.cjs also covers Backspace at the start of nonempty numbered/bulleted items, preserved inline formatting and following numbers, middle-item removal, undo, nested outdent and view round trips.
+
+list-interactions-smoke.cjs exercises typed and parsed prefixes with automatic conversion on/off, middle/start/end splits, menu-created lists, literal prefix removal, styles, Undo/Redo, soft-line round trips, selection deletion, paste, beforeinput/composition guards, source bullets/tasks/code, nested empty exit and reload. Add `--desktop` to run the same scenarios in Electron after preparing desktop/app; it explicitly configures a disposable notes folder. These checks do not establish exact parity with every Notepad version or verify a physical IME/mobile keyboard.
 
 ## Electron smoke tests
 
@@ -84,7 +89,7 @@ node desktop/markdown-files-smoke.cjs
 | markdown-files-smoke.cjs | Managed Markdown migration, collisions, renames, Trash, startup reconciliation and recovery |
 | smoke.cjs | Native integration with mocked pickers, import/export, folder preferences and file opening |
 | reveal-smoke.cjs | Show in File Explorer, including unsaved/invalid/missing-file cases |
-| single-row-smoke.cjs | Desktop header geometry and menu behavior at different widths |
+| single-row-smoke.cjs | Desktop header geometry at 650–1800px, menu selection preservation, light/dark borderless workspace and 26px status bar |
 | print-preview-smoke.cjs | Preview, PDF export, mocked printing, errors and empty-workspace guard |
 | close-smoke.cjs | Delegates to library-smoke.cjs; does not need a duplicate run |
 
@@ -102,6 +107,8 @@ node desktop/review-smoke.cjs
 It records workspace observations. An exit code of zero does not establish that the old QA findings are fixed. The [archived 0.5.1 report](archive/QA-0.5.1.md) records historical reproductions; the [roadmap](../ROADMAP.md) tracks unresolved findings.
 
 ## Reporting results
+
+Use the [regression review skill](../skills/rotepad-regression-review/SKILL.md) and its feature map to select scenarios and record passed, failed, not-run and not-applicable coverage. The map complements these commands; it is not evidence that any scenario has been tested.
 
 Record the scripts actually run, the source/build version tested, failures and checks left undone. Historical changelog results apply to their recorded changes only. Avoid fixed total-test claims based on old printed labels.
 

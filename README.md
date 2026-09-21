@@ -2,7 +2,7 @@
 
 Rotepad is an offline writing application with formatted editing, Markdown source, a note library, search, history and backups. The same shared editor supports a standalone browser file and a Windows desktop application.
 
-The desktop package version is **0.7.1**, as declared in [desktop/package.json](desktop/package.json). Windows builds are unsigned previews. macOS/Linux packaging and phone sync remain planned.
+The desktop package version is **0.8.1**, as declared in [desktop/package.json](desktop/package.json). Windows builds are unsigned previews. macOS/Linux packaging and phone sync remain planned.
 
 ## Open Rotepad
 
@@ -11,7 +11,11 @@ The desktop package version is **0.7.1**, as declared in [desktop/package.json](
 
 ## Writing and notes
 
+The Windows app uses a borderless writing area, one compact row of flat controls and a slim status bar. More tools remain under » and app commands under Menu. The footer's Formatted/Markdown switch remains clickable.
+
 Formatted view is the default for fresh users. The footer switches between Formatted and Markdown; View also offers Split and Preview. Automatic Markdown conversion is optional and off by default. Formatting shortcuts, numbered lists, indentation, tables, text-only zoom, fonts and spellcheck are available.
+
+In Formatted view, Enter continues a list or splits it at the cursor. Typed prefixes such as `1. ` or `- ` work even with automatic inline Markdown conversion off. Shift+Enter adds a line within the item. Backspace at the start of an item removes its marker while retaining its text; for a nested item it reduces the indentation by one level. Enter or Backspace on an empty top-level item exits the list; on an empty nested item it moves out one level. Backspace within text deletes normally.
 
 On desktop, notes automatically save to managed Markdown files. Ctrl+S flushes pending saves. Closing a note keeps it in Library; moving it to Trash allows recovery. The app restores workspace and editing position on launch, subject to the [known issues](ROADMAP.md#known-workspace-issues).
 
@@ -32,6 +36,8 @@ See [storage details](docs/ARCHITECTURE.md#storage-and-recovery) before changing
 - [AGENTS.md](AGENTS.md): standing instructions for Codex.
 - [Architecture](docs/ARCHITECTURE.md): source layout, storage and implementation constraints.
 - [Testing](docs/TESTING.md): prerequisites, commands and verification limits.
+- [Editing behavior skill](skills/rotepad-editing-behavior/SKILL.md): interaction rules and regression scenarios for future editor work.
+- [Regression review skill](skills/rotepad-regression-review/SKILL.md): feature coverage, boundary scenarios and evidence required when checking updates.
 - [Desktop development](desktop/README.md): Electron builds and Windows packaging.
 - [Roadmap](ROADMAP.md): remaining issues and proposed work.
 - [Changelog](changelog.md): completed changes and historical verification.

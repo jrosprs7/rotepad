@@ -23,6 +23,7 @@
 - Never test against real user notes or the normal Rotepad profile. Use disposable profiles and notes folders as described in docs/TESTING.md.
 - Protect recovery text, stable note IDs, Trash, history and existing files during storage changes. Test failures, cancellation and restart behavior.
 - Read the relevant event and wrapper chain before changing the shared editor.
+- For editor-interaction changes, use [Rotepad editing behavior](skills/rotepad-editing-behavior/SKILL.md) and its relevant scenarios; it does not authorize unrelated fixes.
 - Keep tools/formatted-editor.js, tools/responsive-toolbar.js and tools/numbered-lists.js synchronized with their embedded copies in Rotepad.html when modifying those features.
 - Preserve embedded font data and FONT-LICENSE.txt. Prefer targeted edits to the large HTML file.
 - Edit source files, not generated desktop/app or dist output.
@@ -33,6 +34,7 @@
 
 - From desktop: pnpm install --frozen-lockfile installs the locked dependencies; pnpm run prepare-app refreshes generated desktop assets; pnpm run dist creates Windows builds.
 - Follow docs/TESTING.md to select checks relevant to the change. Shared editor changes need affected root tests and browser smoke tests; storage changes need desktop persistence tests.
+- For application changes and bug reviews, use [Rotepad regression review](skills/rotepad-regression-review/SKILL.md) to account for affected features, user scenarios, evidence and untested gaps; use the full feature map for whole-app reviews.
 - Refresh desktop/app before Electron checks. Browser smoke scripts read the root HTML directly.
 - Report what actually ran, failures and verification limits. Previous pass reports are not evidence for the current change.
 - For documentation-only changes, check links, commands and consistency; application builds and tests are not required.

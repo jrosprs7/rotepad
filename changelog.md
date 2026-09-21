@@ -1,5 +1,41 @@
 # Rotepad changelog
 
+## 9/21/26 8:02 PM GMT+8 — Feature and scenario regression-review skill
+
+- Added skills/rotepad-regression-review/SKILL.md with a feature coverage map, reproduction-first workflow, checks for related features, and explicit passed/failed/not-run/not-applicable evidence. Whole-app reviews must account for each supported feature group; focused fixes select affected paths and explain exclusions.
+- Expanded the existing editing/list guidance for freshly typed versus parsed prefixes, middle/start splits, empty nested outdent, task items, list toggles, wrapped text and source-mode boundaries. It links to the broader review without duplicating its checklist.
+- Linked the new skill from AGENTS.md, README.md and the testing guide so future application changes use it. Existing product rules and unrelated uncommitted work were preserved.
+- Documentation-only change: no application code edits, runtime tests or installer rebuild in this batch. Fallback flat-frontmatter/name/scaffold checks passed for both skills; 39 local links including anchors passed, as did git diff --check. The bundled validator could not run because PyYAML is unavailable; no application coverage is claimed from these document checks.
+
+## 9/21/26 7:53 PM GMT+8 — Consistent list splitting and continuation (0.8.1)
+
+- Fixed Enter in the middle of typed numbered/bullet paragraphs: convert the prefix and split at the actual caret while preserving inline formatting. This works with optional automatic inline Markdown conversion off or on and through the beforeinput path. Backspace directly after a literal list prefix removes that prefix and retains the text.
+- Extended source-mode continuation to bullets and task items, including splitting immediately after a marker, while retaining fenced-code protection.
+- Scenario testing also found and fixed two related issues: indented Shift+Enter continuation lines lost their list association on view conversion, and Enter on an empty nested item did not outdent correctly.
+- Added list-interactions-smoke.cjs: 75 counted checks passed in Edge and 75 in isolated development Electron. Existing numbering-smoke.cjs, formatted-smoke.cjs, formatting.cjs, list-zoom.cjs and quote-exit.cjs also passed. Initial failures guided fixes for soft-line round trips and nested empty-item exit; a selection-deletion assertion was corrected to retain the preceding space.
+- Tests cover the reported split, different creation paths and prefixes, first/middle/end positions, preserved styles, Undo/Redo, pasted prefixes, source lists/tasks, nested empty exit and reload. Physical IME/mobile keyboard behavior and exact parity with every Notepad version remain unverified. Real user notes and unrelated uncommitted work were preserved.
+- Rebuilt the unsigned Windows x64 installer and portable package for 0.8.1 successfully. Installation/upgrade was not performed.
+
+## 9/21/26 7:22 PM GMT+8 — Minimalist desktop UI (0.8.0)
+
+- Removed the desktop writing area's outer frame, rounded corners and surrounding gutters. Reduced the command row to 38px and status bar to 26px; retained the clickable view switch and save status.
+- Flattened toolbar/menu controls while retaining hover, active and keyboard-focus indicators. Added a neutral charcoal desktop dark palette. Extra tools remain in the overflow menu.
+- Isolated Electron layout checks passed at 650/850/1250/1800px, including selection preservation through overflow, Settings access, light/dark screenshots and border/status-bar dimensions. Corrected test startup timing and subpixel rounding assumptions during validation.
+- Desktop screen styling only; no editor interaction, persistence or print-output changes. Existing uncommitted work was preserved.
+
+## 9/21/26 7:14 PM GMT+8 — Editor behavior skill
+
+- Added skills/rotepad-editing-behavior/SKILL.md and a focused list-scenario reference for future editing changes. Explicit criteria include nonempty first-document-line Backspace, bullets, nested items, selection boundaries, Enter, Undo/Redo and formatted/source round trips.
+- Linked the project skill from AGENTS.md and README.md. It requires scenario-specific evidence and verification limits rather than promises of zero bugs or assumed parity with other apps.
+- Documentation-only batch; no application behavior change, installer rebuild or application test run.
+- Relative links and fallback metadata/name/placeholder checks passed. The bundled skill validator could not run because its Python environment lacks PyYAML; its full validation remains unrun.
+
+## 9/21/26 7:06 PM GMT+8 — Backspace at the start of list items (0.7.2)
+
+- Backspace at the start of a nonempty numbered or bulleted item now removes the marker while retaining its text and inline formatting. Nested items move out by one level. Existing empty-item Enter/Backspace behavior is retained.
+- Continued list segments retain their starting numbers. The change is shared by browser and desktop editors; source and embedded copies are synchronized.
+- Expanded numbering-smoke.cjs passed for first/middle items, starting at 4, bullets, bold text, undo, nested outdent and view round trips, plus existing continuation checks. The initial nested-outdent test failed with the native browser command; explicit list handling fixed it and the test passed. Existing formatted-smoke.cjs, list-zoom.cjs and formatting.cjs also passed during this batch.
+
 ## 9/20/26 10:13 PM GMT+8 — Project documentation organization
 
 - Added root AGENTS.md and README.md, plus architecture and testing guides with separate browser and desktop storage descriptions.
