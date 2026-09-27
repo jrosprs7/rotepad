@@ -39,10 +39,17 @@ function insertEditingText(text){if(mode==='rich'){restoreRange();document.execC
 function indentSelection(out=false){
  if(mode==='rich'){
   restoreRange();const s=getSelection(),node=s.anchorNode,el=node?.nodeType===3?node.parentElement:node;
-  if(el?.closest('li')){if(!out&&el.closest('li').previousElementSibling?.tagName!=='LI')return;document.execCommand(out?'outdent':'indent');for(const list of rich.querySelectorAll('ul>ul,ul>ol,ol>ul,ol>ol')){if(list.previousElementSibling?.tagName==='LI')list.previousElementSibling.append(list);}commitRich();return;}
-  const r=s.getRangeAt(0),blocks=[...rich.querySelectorAll('p,h1,h2,h3,blockquote,td,th')].filter(b=>r.intersectsNode(b)&&!b.querySelector('p,blockquote'));
+  if(el?.closest('li')){
+   if(out&&s.isCollapsed&&outdentListItem(el.closest('li')))return;
+   if(!out&&el.closest('li').previousElementSibling?.tagName!=='LI')return;
+   document.execCommand(out?'outdent':'indent');
+   const bookmark=s.isCollapsed?document.createElement('span'):null;if(bookmark)s.getRangeAt(0).insertNode(bookmark);
+   for(const list of rich.querySelectorAll('ul>ul,ul>ol,ol>ul,ol>ol')){if(list.previousElementSibling?.tagName==='LI')list.previousElementSibling.append(list);}
+   if(bookmark)caretAtBookmark(bookmark);commitRich();return;
+  }
+  const r=s.getRangeAt(0),blocks=[...rich.querySelectorAll('p,h1,h2,h3,blockquote,pre,td,th')].filter(b=>r.intersectsNode(b)&&!b.querySelector('p,blockquote'));
   if(!blocks.length){if(!out)insertEditingText('\t');return;}
-  for(const block of blocks){if(out){const first=block.firstChild;if(first?.nodeType===3)first.data=first.data.replace(/^(?:\t| {1,4})/,'');}else block.prepend(document.createTextNode('\t'));}rememberRange();commitRich();
+  for(const block of blocks){if(out){const walker=document.createTreeWalker(block,NodeFilter.SHOW_TEXT);let first;while((first=walker.nextNode())&&!first.length){}const prefix=first?.data.match(/^(?:\t| {1,4})/);if(prefix){const remove=document.createRange();remove.setStart(first,0);remove.setEnd(first,prefix[0].length);remove.deleteContents();}}else block.prepend(document.createTextNode('\t'));}rememberRange();commitRich();
  }else{const a=editor.selectionStart,b=editor.selectionEnd,start=a?editor.value.lastIndexOf('\n',a-1)+1:0,last=b>a&&editor.value[b-1]==='\n'?b-1:b,boundary=editor.value.indexOf('\n',last),end=boundary<0?editor.value.length:boundary;insert(editor.value.slice(start,end).split('\n').map(l=>out?l.replace(/^(?:\t| {1,4})/,''):'\t'+l).join('\n'),start,end);}
 }
 editingAction('Increase indent','indent-note',()=>indentSelection(false));editingAction('Decrease indent','outdent-note',()=>indentSelection(true));
@@ -52,6 +59,25 @@ let tableSelection=null;editingAction('Insert table…','insert-table',()=>{if(m
 $('table-form').onsubmit=e=>{e.preventDefault();const cols=Number($('table-columns').value),rows=Number($('table-rows').value);if(!Number.isInteger(cols)||cols<1||cols>8||!Number.isInteger(rows)||rows<2||rows>20)return;const values=[Array.from({length:cols},(_,i)=>'Column '+(i+1)),...Array.from({length:rows-1},()=>Array(cols).fill(''))];$('table-dialog').close();if(mode==='rich'){restoreRange();document.execCommand('insertHTML',false,tableHTML(values)+'<p><br></p>');commitRich();}else{const text=[values[0],Array(cols).fill('---'),...values.slice(1)].map(row=>'| '+row.join(' | ')+' |').join('\n');insert('\n'+text+'\n',...tableSelection);}};
 document.addEventListener('keydown',e=>{if(document.querySelector('dialog[open]')||mode==='preview')return;if(e.key==='F5'){e.preventDefault();$('insert-datetime').click();}if((e.ctrlKey||e.metaKey)&&['[',']'].includes(e.key)&&[editor,rich].includes(document.activeElement)){e.preventDefault();indentSelection(e.key==='[');}},true);
 rich.addEventListener('keydown',e=>{if(e.key!=='Tab'||e.ctrlKey||e.metaKey||e.altKey)return;const n=getSelection().anchorNode,cell=(n?.nodeType===3?n.parentElement:n)?.closest('td,th');if(!cell)return;const table=cell.closest('table'),cells=[...table.querySelectorAll('th,td')],index=cells.indexOf(cell);let target=cells[index+(e.shiftKey?-1:1)];if(!target&&!e.shiftKey){const row=table.insertRow();for(let i=0;i<table.rows[0].cells.length;i++)row.insertCell().innerHTML='<br>';target=row.cells[0];commitRich();}if(target){e.preventDefault();const r=document.createRange();r.selectNodeContents(target);r.collapse(true);getSelection().removeAllRanges();getSelection().addRange(r);rememberRange();}},true);
-const formattedStyle=document.createElement('style');formattedStyle.textContent='.preview table{border-collapse:collapse;width:100%;margin:8px 0;table-layout:fixed}.preview th,.preview td{border:1px solid var(--line);padding:6px 8px;min-width:40px;white-space:pre-wrap;overflow-wrap:anywhere}.preview th{background:var(--soft);text-align:left}footer #editing-mode{font-size:12px;min-height:24px;padding:2px 8px}';document.head.append(formattedStyle);
-$('shortcuts-dialog').insertAdjacentHTML('beforeend','<p class="side-note">Ctrl+[ / Ctrl+] decreases/increases indent. F5 inserts the current date and time. Use the bottom Formatted/Markdown button to switch views. Automatic Markdown conversion is optional in Settings.</p>');
+function editorTab(e){
+ if(e.defaultPrevented||e.key!=='Tab'||e.ctrlKey||e.metaKey||e.altKey||e.isComposing||composing||document.querySelector('dialog[open]'))return;
+ if(e.currentTarget===rich){
+  if(document.activeElement!==rich)return;
+  const s=getSelection();if(!s.rangeCount||!rich.contains(s.anchorNode)||!rich.contains(s.focusNode))return;
+  const element=n=>n.nodeType===3?n.parentElement:n,r=s.getRangeAt(0),start=element(r.startContainer),end=element(r.endContainer);
+  // Tables retain their existing cell navigation, including leaving the first cell.
+  if(start.closest('td,th'))return;
+  e.preventDefault();breakTypingGroup();rememberRange();
+  const block=n=>n.closest('p,div,li,h1,h2,h3,blockquote,pre');
+  if(e.shiftKey||start.closest('li')&&!start.closest('pre,code')||!s.isCollapsed&&block(start)!==block(end))indentSelection(e.shiftKey);
+  else insertEditingText('\t');
+ }else{
+  e.preventDefault();breakTypingGroup();
+  if(e.shiftKey||editor.value.slice(editor.selectionStart,editor.selectionEnd).includes('\n'))indentSelection(e.shiftKey);
+  else insert('\t');
+ }
+}
+rich.addEventListener('keydown',editorTab,true);editor.addEventListener('keydown',editorTab,true);
+const formattedStyle=document.createElement('style');formattedStyle.textContent='.preview{tab-size:4}.preview table{border-collapse:collapse;width:100%;margin:8px 0;table-layout:fixed}.preview th,.preview td{border:1px solid var(--line);padding:6px 8px;min-width:40px;white-space:pre-wrap;overflow-wrap:anywhere}.preview th{background:var(--soft);text-align:left}footer #editing-mode{font-size:12px;min-height:24px;padding:2px 8px}';document.head.append(formattedStyle);
+$('shortcuts-dialog').insertAdjacentHTML('beforeend','<p class="side-note">Tab inserts a tab in text, indents selected lines or nests a list item. Shift+Tab decreases indent. In tables, Tab/Shift+Tab moves between cells. Ctrl+[ / Ctrl+] decreases/increases indent. F5 inserts the current date and time. Use the bottom Formatted/Markdown button to switch views. Automatic Markdown conversion is optional in Settings.</p>');
 applyPrefs();setMode('rich');

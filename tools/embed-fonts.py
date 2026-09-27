@@ -1,4 +1,4 @@
-"""Embed the eight unmodified Iosevka 34.8.1 faces from the user's TTC.
+"""Embed twelve unmodified Iosevka 34.8.1 faces from the user's TTC.
 
 Run with Python plus fonttools and brotli installed:
     python tools/embed-fonts.py path/to/IosevkaSS03.ttc
@@ -22,7 +22,11 @@ faces = [('Iosevka Fixed SS03', 56, 400, 'normal'),
          ('Iosevka SS03 Extended', 57, 400, 'normal'),
          ('Iosevka SS03 Extended', 67, 400, 'italic'),
          ('Iosevka SS03 Extended', 111, 700, 'normal'),
-         ('Iosevka SS03 Extended', 121, 700, 'italic')]
+         ('Iosevka SS03 Extended', 121, 700, 'italic'),
+         ('Iosevka Fixed SS03 Extended', 59, 400, 'normal'),
+         ('Iosevka Fixed SS03 Extended', 71, 400, 'italic'),
+         ('Iosevka Fixed SS03 Extended', 113, 700, 'normal'),
+         ('Iosevka Fixed SS03 Extended', 125, 700, 'italic')]
 rules = []
 for family, index, weight, style in faces:
     font = collection.fonts[index]

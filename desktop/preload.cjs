@@ -1,5 +1,9 @@
 const {contextBridge, ipcRenderer} = require('electron');
 contextBridge.exposeInMainWorld('rotDesktop', {
+  platform: process.platform,
+  info: () => ipcRenderer.invoke('desktop-info'),
+  titlebarTheme: theme => ipcRenderer.invoke('titlebar-theme',theme),
+  defaultApps: () => ipcRenderer.invoke('desktop-default-apps'),
   save: data => ipcRenderer.invoke('note-save', data),
   open: () => ipcRenderer.invoke('note-open'),
   bind: data => ipcRenderer.invoke('note-bind', data),
@@ -11,7 +15,10 @@ contextBridge.exposeInMainWorld('rotDesktop', {
   chooseFolder: () => ipcRenderer.invoke('choose-folder'),
   ready: () => ipcRenderer.invoke('desktop-ready'),
   libraryInitial: () => ipcRenderer.sendSync('library-initial'),
-  librarySave: text => ipcRenderer.invoke('library-save',text),
+  librarySave: (text,base) => ipcRenderer.invoke('library-save',{text,base}),
+  newWindow: () => ipcRenderer.invoke('window-new'),
+  onLibrary: callback => {ipcRenderer.on('library-changed',(_event,text)=>callback(text));},
+  onSettings: callback => {ipcRenderer.on('settings-changed',(_event,settings)=>callback(settings));},
   closeFinish: approved => ipcRenderer.invoke('close-finish',approved),
   onClose: callback => {ipcRenderer.on('request-close',()=>callback());},
   onOpen: callback => {ipcRenderer.on('opened-note',(_event,file)=>callback(file));}

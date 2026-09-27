@@ -33,17 +33,19 @@ Building does not install the app. These are unsigned previews with no automatic
 
 ## Assembly and generated files
 
-prepare.cjs copies Rotepad.html into app and injects library bootstrap, desktop integration, library management, the single-row toolbar and print preview. It copies icons and the font license as well. Always prepare after source changes before development runs or Electron tests.
+prepare.cjs copies Rotepad.html into app and injects library bootstrap, desktop integration, library management, the single-row toolbar, note tabs, Windows title-bar/About controls and print preview. It copies icons and the font license as well. Always prepare after source changes before development runs or Electron tests.
 
 Edit source files, not app. Generated app, node_modules and test-profile are ignored locally; root dist is ignored by the repository.
 
 ## Windows integration
 
-The installer uses a per-machine NSIS setup, allows choosing the installation directory and requires administrator approval. It registers .md/.markdown support; selecting Rotepad as the default application remains a Windows user choice. The portable executable does not register associations.
+The installer uses a per-machine NSIS setup, allows choosing the installation directory and requires administrator approval. [installer.nsh](installer.nsh) registers .md/.markdown/.txt handlers under the name Rotepad, plus Windows Default Apps capabilities. Its final page offers an unchecked option to open Windows Settings for the user's default-app choice. It does not overwrite extension defaults or UserChoice. The portable executable does not register associations; its Settings button opens the general Windows Default Apps page.
+
+The explicit FriendlyAppName and application-name registration supply the Open with label. Executable paths are quoted so installation folders containing spaces work. This custom registration replaces electron-builder's fileAssociations configuration, which would also write extension defaults. The existing Markdown ProgID is retained for upgrades. Uninstall removes Rotepad's own registration while preserving other applications' registrations.
 
 The installer is configured to retain app data on uninstall. Notes live in managed Markdown files, with recovery and metadata in the app profile; see [storage and recovery](../docs/ARCHITECTURE.md#storage-and-recovery).
 
-Startup and already-running file opening, native pickers and Explorer integration are implemented. Automated checks mock external interactions; installation, upgrades, default-app selection and physical printing still require manual verification.
+Startup and already-running file opening, native pickers and Explorer integration are implemented. An additional launch opens another window in the same process; File → New window and Ctrl+Shift+N do the same. The windows share the library and save coordinator; see the [main README](../README.md#writing-and-notes) for workspace and conflict behavior. Automated checks mock external interactions; installation, upgrades, default-app selection and physical printing still require manual verification.
 
 ## Icons
 

@@ -11,7 +11,7 @@ async function log(label,fn){console.log(label+': '+JSON.stringify(await page.ev
  await fs.mkdir(profile,{recursive:true});await launch();
  console.log('Payload '+await app.evaluate(({app})=>app.getVersion()));
  await page.evaluate(()=>{filename.value='Only note.md';editor.value='This note is closed, not open.';loadRich();persist();});
- await page.locator('#close-note').click();await page.waitForFunction(()=>activeNote().closed);
+ await page.locator('.note-tab:has([aria-selected=true]) .note-tab-close').click();await page.waitForFunction(()=>activeNote().closed);
  await log('CLOSED workspace',()=>({empty:!$('empty-workspace').hidden,text:editor.value,printButtons:[...document.querySelectorAll('button')].filter(b=>/print/i.test(b.id)).map(b=>({id:b.id,disabled:b.disabled}))}));
  await page.evaluate(()=>{window.print=()=>{window.printCalled=true;};const button=[...document.querySelectorAll('button')].find(b=>/print/i.test(b.id));button?.click();});
  await log('PRINT with no open note',()=>({called:window.printCalled,text:$('print-document')?.textContent}));

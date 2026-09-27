@@ -36,8 +36,10 @@ async function stop(instance){const child=instance.process();await instance.eval
   assert.equal(await page.evaluate(()=>editor.value),'Saved after restart');
   const faces=await page.evaluate(async()=>{await document.fonts.ready;return (await document.fonts.load('italic 700 16px "Iosevka SS03 Extended"')).length;});assert.equal(faces,1);
   const external=path.join(profile,'external note.md');await fs.writeFile(external,'Opened from Explorer');
+  const openedWindow=app.waitForEvent('window');
   await app.evaluate(({app},file)=>app.emit('second-instance',{},[process.execPath,app.getAppPath(),file]),external);
-  await page.waitForFunction(()=>editor.value==='Opened from Explorer');
+  const externalPage=await openedWindow;await externalPage.waitForFunction(()=>typeof editor!=='undefined'&&editor.value==='Opened from Explorer');
+  assert.notEqual(await page.evaluate(()=>editor.value),'Opened from Explorer');
   await page.evaluate(()=>{prefs.autoMarkdown=true;createNote('Formatting test.md','');setMode('rich');rich.focus();});
   await page.keyboard.type('*hello*');assert.equal(await page.locator('#rich-editor em').count(),1);
   await page.keyboard.press('Backspace');assert.equal(await page.locator('#rich-editor em').count(),0);assert.equal(await page.locator('#rich-editor').innerText(),'*hello*');

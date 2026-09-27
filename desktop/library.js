@@ -10,10 +10,11 @@ function normalizeNoteTitles(){
 normalizeNoteTitles();filename.setAttribute('aria-label','Note title');
 let libraryTimer,libraryPending='',libraryWritten='',libraryWriting=null,libraryError='';
 let libraryStamp=Date.now(),libraryClosing=false;
+let libraryBase=window.desktopLibraryBase||JSON.stringify({version:2,notes:[]}),libraryApplying=false,libraryNotice='',remoteLibrary=null,remoteTimer;
 const retryLibrary=document.createElement('button');retryLibrary.id='retry-library-save';retryLibrary.textContent='Retry save';retryLibrary.hidden=true;$('save-status').after(retryLibrary);
 function libraryStatus(){
   const busy=Boolean(libraryPending&&libraryPending!==libraryWritten);
-  $('save-status').textContent=libraryError?'Could not save notes':busy?'Saving…':'Saved in Rotepad';
+  $('save-status').textContent=libraryError?'Could not save notes':busy?'Saving…':libraryNotice||'Saved in Rotepad';
   $('save-status').title=libraryError||'Each note saves automatically to a Markdown file on this PC. File → Export Markdown creates an additional copy.';
   retryLibrary.hidden=!libraryError;
 }
@@ -24,8 +25,42 @@ function librarySnapshot(){
 }
 function queueLibrary(){
   libraryPending=librarySnapshot();
-  try{localStorage.setItem(libraryKey,libraryPending);}catch{/* Disk library remains available when browser storage is full. */}
+  cacheWindow();
   clearTimeout(libraryTimer);libraryTimer=setTimeout(()=>flushLibrary().catch(()=>{}),400);libraryStatus();
+}
+// Store the snapshot and merge baseline together, so interruption cannot mix generations.
+function cacheWindow(){try{localStorage.setItem(libraryKey,JSON.stringify({...JSON.parse(libraryPending),desktopBase:JSON.parse(libraryBase)}));}catch{/* The disk library remains available when browser storage is full. */}}
+function remapConflicts(data,conflicts){
+  for(const {originalId,copyId} of conflicts){const note=data.notes.find(n=>n.id===originalId);if(note)note.id=copyId;if(data.activeId===originalId)data.activeId=copyId;}
+  return data;
+}
+function acceptLibrary(text,baseText=libraryBase,conflicts=[],dirty=libraryPending!==libraryWritten){
+  capturePosition();
+  const local=remapConflicts(JSON.parse(librarySnapshot()),conflicts),base=remapConflicts(JSON.parse(baseText),conflicts),remote=JSON.parse(text);
+  const merged=mergeDesktopLibrary(base,local,remote,{keepWorkspace:true});
+  const previousId=activeId,previousText=editor.value,previousName=filename.value;
+  libraryApplying=true;
+  try{
+    for(const note of merged.data.notes)if(notes.find(n=>n.id===note.id)?.text!==note.text)histories.delete(note.id);
+    // Async actions may hold a note across a save; retain object identity for existing IDs.
+    notes=merged.data.notes.map(value=>{const existing=notes.find(n=>n.id===value.id);if(!existing)return value;for(const key of Object.keys(existing))if(!(key in value))delete existing[key];return Object.assign(existing,value);});activeId=merged.data.activeId;
+    const note=activeNote();
+    if(note&&(previousId!==activeId||previousText!==note.text||previousName!==note.name)){
+      editor.value=note.text;filename.value=note.name;loadRich();render();restorePosition();updateUndo();renderOutline();
+    }
+    renderNotes();libraryBase=text;libraryPending=librarySnapshot();
+    if(conflicts.length||merged.conflicts.length)libraryNotice='Conflicting edits kept in a separate copy';
+    if(!dirty&&!merged.conflicts.length)libraryWritten=libraryPending;
+    cacheWindow();libraryStatus();
+  }finally{libraryApplying=false;}
+  if(libraryPending!==libraryWritten){clearTimeout(libraryTimer);libraryTimer=setTimeout(()=>flushLibrary().catch(()=>{}),400);}
+}
+function receiveLibrary(text){
+  if(!remoteLibrary||JSON.parse(text).desktopSavedAt>=JSON.parse(remoteLibrary).desktopSavedAt)remoteLibrary=text;
+  clearTimeout(remoteTimer);
+  if(libraryWriting||libraryClosing||composing||document.querySelector('dialog[open]')){remoteTimer=setTimeout(()=>receiveLibrary(remoteLibrary),100);return;}
+  const latest=remoteLibrary;remoteLibrary=null;
+  if(JSON.parse(latest).desktopSavedAt>JSON.parse(libraryBase).desktopSavedAt||!JSON.parse(libraryBase).desktopSavedAt)acceptLibrary(latest);
 }
 async function flushLibrary(){
   clearTimeout(libraryTimer);
@@ -33,7 +68,11 @@ async function flushLibrary(){
   if(libraryWriting){await libraryWriting;if(libraryPending!==libraryWritten)return flushLibrary();return;}
   libraryWriting=(async()=>{
     try{
-      while(libraryPending!==libraryWritten){const text=libraryPending;await window.rotDesktop.librarySave(text);libraryWritten=text;}
+      while(libraryPending!==libraryWritten){
+        const text=libraryPending,result=await window.rotDesktop.librarySave(text,libraryBase);
+        if(composing)await new Promise(resolve=>rich.addEventListener('compositionend',resolve,{once:true}));
+        const dirty=libraryPending!==text;acceptLibrary(result.library,text,result.conflicts,dirty);
+      }
       libraryError='';storageOK=true;
     }catch(error){libraryError=error.message;throw error;}
     finally{libraryStatus();}
@@ -41,7 +80,7 @@ async function flushLibrary(){
   try{await libraryWriting;}finally{libraryWriting=null;}
 }
 const libraryPersist=persistLibrary;
-persistLibrary=function(){normalizeNoteTitles();libraryPersist();queueLibrary();};
+persistLibrary=function(){if(libraryApplying)return;normalizeNoteTitles();libraryPersist();queueLibrary();};
 retryLibrary.onclick=()=>{persist();void flushLibrary().catch(()=>{});};
 save=async()=>{persist();try{await flushLibrary();}catch(error){alert('Could not save notes. '+error.message);}};
 $('save').onclick=save;$('save').textContent='Save now';$('save').title='Save notes now (Ctrl+S). Notes also save automatically.';
@@ -110,7 +149,7 @@ async function closeLibraryNote(id=activeId){
   capturePosition();persist();
   try{await flushLibrary();}catch(error){alert('Could not save this note. It will stay open. '+error.message);return;}
   note.closed=true;
-  if(id===activeId){const next=notes.find(n=>!n.closed&&!n.trashed);if(next)activateNote(next.id);}
+  if(id===activeId){const order=prefs.tabOrder||notes.map(n=>n.id),index=order.indexOf(id);const nearby=[...order.slice(index+1),...order.slice(0,index).reverse()];const next=nearby.map(id=>notes.find(n=>n.id===id)).find(n=>n&&!n.closed&&!n.trashed)||notes.find(n=>!n.closed&&!n.trashed);if(next)activateNote(next.id);}
   persist();renderNotes();
 }
 closeNoteButton.onclick=()=>closeLibraryNote();closeManaged.onclick=()=>{$('note-actions-dialog').close();void closeLibraryNote(managedNoteId);};
@@ -125,7 +164,7 @@ window.addEventListener('keydown',event=>{
   if(document.querySelector('dialog[open]'))return;
   const modifier=event.ctrlKey||event.metaKey,key=event.key.toLowerCase();
   if(modifier&&key==='w'){event.preventDefault();event.stopImmediatePropagation();void closeLibraryNote();}
-  else if(modifier&&key==='n'){event.preventDefault();event.stopImmediatePropagation();createNote();}
+  else if(modifier&&key==='n'){event.preventDefault();event.stopImmediatePropagation();if(event.shiftKey)void openNewWindow();else createNote();}
   else if((activeNote()?.closed||activeNote()?.trashed)&&(event.key==='F5'||modifier&&['b','i','u','k','z','y','f','h','[',']'].includes(key))){event.preventDefault();event.stopImmediatePropagation();}
 },true);
 window.rotDesktop.onClose(async()=>{
@@ -143,4 +182,12 @@ renderNotes();
 if(['rich','write','split','preview'].includes(window.desktopInitialSession?.mode))setMode(window.desktopInitialSession.mode);
 if(window.desktopInitialSession?.positions)activeNote().positions=window.desktopInitialSession.positions;
 restorePosition();persist();
+const newWindowButton=document.createElement('button');newWindowButton.id='new-window';newWindowButton.textContent='New window';newWindowButton.title='New window (Ctrl+Shift+N)';fileMenu.menu.querySelector('.app-menu-panel').prepend(newWindowButton);
+let openingWindow=false;
+async function openNewWindow(){if(openingWindow)return;openingWindow=true;try{capturePosition();persist();await flushLibrary();await rotDesktop.newWindow();}catch(error){alert('Could not open a new window. '+error.message);}finally{openingWindow=false;}}
+newWindowButton.onclick=openNewWindow;
+libraryShortcuts.insertAdjacentHTML('beforeend','<dt>New window</dt><dd><kbd>Ctrl + Shift + N</kbd></dd>');
+rotDesktop.onLibrary(receiveLibrary);
+rotDesktop.onSettings(settings=>{$('default-save-folder').textContent=settings.saveFolder;});
+if(window.desktopFreshWindow)createNote();
 if(window.desktopLibraryBootstrapError){libraryError=window.desktopLibraryBootstrapError;libraryStatus();alert('Could not restore the saved library. Restart Rotepad before editing. '+libraryError);document.body.inert=true;}

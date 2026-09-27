@@ -32,7 +32,7 @@ const overflowSummary=$('more-format').querySelector('summary');overflowSummary.
 compactVisible.append(...compactItems);
 for(const child of [...mainToolbar.children])if(![$('find-toggle'),$('more-format')].includes(child))child.style.display='none';
 mainToolbar.append(compactCore,compactVisible,$('find-toggle'),$('more-format'));
-for(const option of $('font').options)if(option.value==='Iosevka SS03 Extended')option.textContent='Iosevka Extended';else if(option.value==='Iosevka Fixed SS03')option.textContent='Iosevka Fixed';
+for(const option of $('font').options)if(option.value==='Iosevka Fixed SS03 Extended')option.textContent='Iosevka Fixed Extended';
 $('font').title=$('font').value;$('font').addEventListener('change',()=>{$('font').title=$('font').value;});
 $('font').setAttribute('aria-label','Font');
 const compactApp=makeAppMenu('Menu','compact-app-menu');compactApp.panel.classList.add('compact-app-panel');topActions.append(compactApp.menu);

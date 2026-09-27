@@ -1,0 +1,18 @@
+const assert=require('node:assert/strict');
+const {mergeDesktopLibrary:merge}=require('../desktop/library-merge.cjs');
+const clone=x=>JSON.parse(JSON.stringify(x));
+const note=(id,text)=>({id,name:id,text,revisions:[],closed:false,updated:1});
+const base={version:2,activeId:'a',notes:[note('a','A'),note('b','B')],prefs:{},mode:'rich'};
+const run=(local,remote,options={})=>merge(base,local,remote,{makeId:()=> 'copy',...options});
+let a=clone(base),b=clone(base);a.notes[0].text='A edited';b.notes[1].text='B edited';
+let r=run(a,b);assert.deepEqual(r.data.notes.map(n=>n.text),['A edited','B edited']);assert.equal(r.conflicts.length,0);
+a.notes.push(note('new','new note'));r=run(a,b);assert.equal(r.data.notes.length,3);
+b.notes[0].text='Other version';r=run(a,b);assert.equal(r.data.notes.find(n=>n.id==='a').text,'Other version');assert.equal(r.data.notes.find(n=>n.id==='copy').text,'A edited');assert.equal(r.data.activeId,'copy');
+a=clone(base);b=clone(base);a.notes[0].name='Renamed';b.notes[0].text='Changed';r=run(a,b);assert.equal(r.conflicts.length,0);assert.equal(r.data.notes[0].name,'Renamed');assert.equal(r.data.notes[0].text,'Changed');
+a=clone(base);b=clone(base);a.notes[0].text='Unsaved';b.notes[0].trashed=true;r=run(a,b);assert.equal(r.data.notes[0].trashed,true);assert.equal(r.data.notes.find(n=>n.id==='copy').trashed,false);assert.equal(r.data.notes.find(n=>n.id==='copy').text,'Unsaved');
+a=clone(base);a.notes=a.notes.filter(n=>n.id!=='a');b=clone(base);b.notes[0].text='Keep newer';assert.equal(run(a,b).data.notes[0].text,'Keep newer');assert.equal(run(a,base).data.notes.some(n=>n.id==='a'),false);
+a=clone(base);b=clone(base);b.notes=[];assert.equal(run(a,b).data.notes.length,0);a.notes[0].text='Recover deleted';assert.equal(run(a,b).data.notes[0].text,'Recover deleted');
+a=clone(base);b=clone(base);b.notes[0].closed=true;b.mode='write';a.notes[0].positions={rich:{caret:3}};r=run(a,b,{keepWorkspace:true});assert.equal(r.data.notes[0].closed,false);assert.equal(r.data.mode,'rich');assert.equal(r.data.notes[0].positions.rich.caret,3);
+a=clone(base);b=clone(base);a.notes[0].revisions=Array.from({length:30},(_,i)=>({at:i*180000,text:String(i)}));b.notes[0].revisions=Array.from({length:30},(_,i)=>({at:i*180000+100,text:'Other '+i}));r=run(a,b);const revisions=r.data.notes[0].revisions;assert.equal(revisions.length,25);assert.ok(revisions.every((v,i)=>!i||v.at-revisions[i-1].at>=180000));
+assert.deepEqual(base.notes.map(n=>n.text),['A','B'],'Do not mutate inputs');
+console.log('Multi-window merge: independent edits/additions, conflicts, rename/text, Trash, deletion, workspace isolation and history limits passed.');
