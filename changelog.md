@@ -1,5 +1,10 @@
 # Rotepad changelog
 
+## 9/27/26 10:48 PM GMT+8 — Public installer download
+
+- Published the [0.11.0 Windows testing release](https://github.com/jrosprs7/rotepad/releases/tag/v0.11.0) with Rotepad-0.11.0-Setup.exe, linked to source commit 391e88ba4a31dedcfc59145c8a31b5d4987e8c8b. Added a direct installer link to the README. Executable build output remains excluded from Git source commits.
+- Verified GitHub's uploaded SHA-256 matches the local installer (`3a0a046e4bef290eb7c8f3a916488a83bc79d7f9eabf901063ac046ddd18cd5b`) and the 107,290,927-byte download returns HTTP 200 without authentication. No app code or installer bytes changed; installation/upgrade verification remains a tester task.
+
 ## 9/27/26 10:21 PM GMT+8 — Windows title-bar tabs, app identity and font choices (0.11.0)
 
 - Merged the desktop note tabs into the Windows title bar using native minimize/maximize/close buttons. Kept the 34px tab/title row and 38px toolbar, with reserved caption-button space, draggable empty space and theme-matched controls. Focus mode hides tabs while retaining usable window controls. Existing tab and note operations remain unchanged.
