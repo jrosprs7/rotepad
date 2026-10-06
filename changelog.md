@@ -1,5 +1,15 @@
 # Rotepad changelog
 
+## 10/6/26 10:21 AM GMT+8 — Windows build 0.12.0
+
+- Set the desktop package version to 0.12.0 for the literal-bullet, Pure Ink and data-safety changes above. Built Windows x64 NSIS and portable packages with `pnpm run dist`, using pnpm 11.19.0 through corepack because pnpm was no longer installed. The app has no runtime dependencies (the builder fell back to traversal and found none), and the builder downloaded its standard NSIS tools.
+- Rotepad-0.12.0-Setup.exe is 107,292,447 bytes, SHA-256 `a19ccbeb28cac0fdbd53fbda5cf10e174b280e10906410ccab7945d3a9846387`. Rotepad-0.12.0-Windows.exe is 107,050,196 bytes, SHA-256 `e87257228bc098a279edc7d2161e47f0953f151695a9b599fba2a7bdc4f337a3`. Executables remain excluded from Git.
+
+| Area / expected behavior | Current verification | Result / limits |
+| --- | --- | --- |
+| Packaged payload | Extracted app.asar: packaged version 0.12.0. main.cjs, preload.cjs, library-merge.cjs, markdown-store.cjs and the prepared Rotepad.html are byte-identical to the tested sources and contain the new fixes. shell-ui-smoke.cjs checks About/version after the bump | Passed. The full root, browser and desktop suites ran on this source before the version-only change. |
+| Installation | Not run | Installing, upgrading from 0.11.0, uninstalling, file associations and running the packaged executable remain manual tester checks. Builds are unsigned. |
+
 ## 10/6/26 9:51 AM GMT+8 — Fix QA data-loss bugs
 
 Fixes the seven data-loss items from [QA-2026-10-06](docs/QA-2026-10-06.md) (D1–D7, plus F1–F2).
