@@ -1,5 +1,10 @@
 # Rotepad changelog
 
+## 10/6/26 10:26 AM GMT+8 — Public 0.12.0 installer download
+
+- Published the [0.12.0 Windows testing release](https://github.com/jrosprs7/rotepad/releases/tag/v0.12.0) (pre-release) with Rotepad-0.12.0-Setup.exe. The tag is on c400f310a8cdfb3d2962c4f88652cb1a0637ccaf; the installer was built from 58f48b6, and the later commit only points the README download link at 0.12.0.
+- Verified that GitHub's asset digest matches the local installer (`a19ccbeb28cac0fdbd53fbda5cf10e174b280e10906410ccab7945d3a9846387`), and that the 107,292,447-byte download returns HTTP 200 without authentication and hashes identically. No app code or installer bytes changed. Installing and upgrading remain tester tasks.
+
 ## 10/6/26 10:21 AM GMT+8 — Windows build 0.12.0
 
 - Set the desktop package version to 0.12.0 for the literal-bullet, Pure Ink and data-safety changes above. Built Windows x64 NSIS and portable packages with `pnpm run dist`, using pnpm 11.19.0 through corepack because pnpm was no longer installed. The app has no runtime dependencies (the builder fell back to traversal and found none), and the builder downloaded its standard NSIS tools.
