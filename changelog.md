@@ -1,5 +1,25 @@
 # Rotepad changelog
 
+## 10/6/26 1:19 AM GMT+8 — Literal bullet prefixes, Pure Ink light theme and exploratory QA
+
+- Typed `- `, `* ` and `+ ` prefixes in Formatted view now stay plain text on space and Enter, with automatic Markdown conversion off or on. Removed bullet markers from the typed-list Enter handler (root copy and tools/numbered-lists.js, kept in sync) and from the optional auto-Markdown space rule. Typed numbers (`1. `), typed headings with conversion on, the Bullet list command, Markdown view, imports and existing notes are unchanged.
+- To keep literal text from reopening as a bullet, the rich-text serializer now writes a paragraph's line-leading `-`/`+` followed by a space or tab as `\-`/`\+` (`*` was already escaped). Inline parsing decodes that line-leading escape. Mid-line, repeated and tight hyphens (`a - b`, `---`, `-dash`) are written unchanged. Existing notes are not rewritten.
+- The Light appearance is now the Pure Ink palette from SurBEE: a grey desk (#d6d6d3), paper page (#f8f8f6), near-black ink and accent (#0e0e0e), black pills for pressed formatting buttons and the selected view, and grey replacements for the previously hard-coded blue focus, hover, dialog and selection colors. A faint paper grain covers only the chrome (tabs, toolbar, sidebar, status bar, find panel, outline); the writing page stays smooth. Desktop toolbar and tab-strip colors and the Windows caption-button overlay match. Dark is unchanged, and Appearance still offers Match computer, Light and Dark. Embedded font payloads were verified unchanged.
+- Added desktop/bullet-literal-smoke.cjs and serializer/parser assertions in tests/formatting.cjs. list-interactions-smoke.cjs no longer expects typed bullet prefixes to convert; its parsed-bullet and typed-number cases remain. Documentation, the list-scenario matrix and the feature map are updated.
+- Recorded open findings from hands-on browser QA of the pre-change build in [QA-2026-10-06](docs/QA-2026-10-06.md), linked from the roadmap. They were rechecked on the changed source, where the same failures occur; none were fixed in this batch.
+
+| Area / expected behavior | Current verification | Result / limits |
+| --- | --- | --- |
+| Literal bullet prefixes | Failing regression first (typed `- text` + Enter became a bullet), then bullet-literal-smoke.cjs in Edge and `--desktop`, with the managed Markdown file checked | Passed (74 checks per runtime). Physical IME and real-clipboard paste are not covered (synthetic paste events are used). |
+| Lists, quotes, dashes, highlights, tabs, fonts | All root tests; formatted, toolbar, bold, numbering, list-interactions, tab, highlight, dash, font and quote-literal smokes in Edge, plus the editor suites with `--desktop` | Passed on the final source. |
+| Pure Ink theme | Before/after browser screenshots at 1280/420px (page, » menu, Settings) and isolated Electron screenshots in light/dark. Dark screenshots are byte-identical to before. Computed-style checks for pressed Bold, toolbar hover and editor focus in desktop | Passed after a fix. An early version gave the desktop page a focus frame and toolbar buttons a hover border because the overrides were more specific than the desktop shell's rules; they were lowered with `:where()` and checked again. Physical display and Windows caption-button rendering were not checked. |
+| Desktop storage and shell | library, markdown-files, multi-window, note-tabs, shell-ui, single-row, print-preview, reveal and smoke.cjs on prepared desktop/app | Passed in isolated development profiles. No build, installation or publishing. |
+
+## 10/6/26 12:22 AM GMT+8 — Agent-neutral project instructions
+
+- Described AGENTS.md in the README as instructions for coding agents generally rather than Codex only. Added CLAUDE.md, which imports AGENTS.md so Claude Code loads the same rules; AGENTS.md remains the single source.
+- Documentation only; no app code, tests or builds changed. Checked the README links.
+
 ## 9/27/26 10:48 PM GMT+8 — Public installer download
 
 - Published the [0.11.0 Windows testing release](https://github.com/jrosprs7/rotepad/releases/tag/v0.11.0) with Rotepad-0.11.0-Setup.exe, linked to source commit 391e88ba4a31dedcfc59145c8a31b5d4987e8c8b. Added a direct installer link to the README. Executable build output remains excluded from Git source commits.

@@ -11,13 +11,15 @@ The desktop package version is **0.11.0**, as declared in [desktop/package.json]
 
 ## Writing and notes
 
-The Windows app uses a borderless writing area, note tabs inside the title bar beside the native window buttons, one compact toolbar, and a short status bar. Tabs and toolbar have separate backgrounds from the writing area; light mode uses darker gray controls around the white page. Drag the unused title-bar space to move the window. The sidebar button is at the far left of the toolbar. More tools remain under » and app commands under Menu. The footer's Formatted/Markdown switch remains clickable. Focus mode hides the tabs but retains the title bar and window controls.
+The Windows app uses a borderless writing area, note tabs inside the title bar beside the native window buttons, one compact toolbar, and a short status bar. Tabs and toolbar have separate backgrounds from the writing area. Drag the unused title-bar space to move the window. The sidebar button is at the far left of the toolbar. More tools remain under » and app commands under Menu. The footer's Formatted/Markdown switch remains clickable. Focus mode hides the tabs but retains the title bar and window controls.
 
 Open notes appear as tabs in each window. Click a tab to switch, **+** or **Ctrl+N** to create a note, and a tab's **×** or **Ctrl+W** to close it while keeping it in Library. Double-click a tab (or right-click it) for note options and renaming. **Ctrl+Tab / Ctrl+Shift+Tab** cycles between open notes; a focused tab also supports arrow keys, Home/End and F2 for renaming. Long tab rows scroll horizontally. Closing the active tab selects the next tab, or the previous one at the end. Reopening a note from Library adds its tab at the end.
 
 The **Remove formatting** toolbar button (the T× icon) removes inline formatting from selected text, preserving paragraphs and lists. It supports Undo and works in Formatted and Markdown/Split views; it is unavailable in Preview or without a selection.
 
 Formatted view is the default for fresh users. The footer switches between Formatted and Markdown; View also offers Split and Preview. Automatic Markdown conversion is optional and off by default. Formatting shortcuts, numbered lists, indentation, tables, text-only zoom, fonts and spellcheck are available.
+
+The Light appearance uses the **Pure Ink** palette, shared with SurBEE: near-black text and controls on an off-white paper page, a grey surrounding desk, and black pills for pressed formatting buttons and the selected view. Tabs, toolbars, the sidebar and the status bar carry a faint paper grain; the writing page stays smooth. Dark is unchanged. Settings → Appearance still offers Match computer, Light and Dark.
 
 Equals-sign dividers such as `======` remain plain text after reopening. Highlight uses `==text==` in Markdown or the Highlight tool in Formatted view. With automatic Markdown conversion off, typing that syntax in Formatted view keeps it literal when saved and reopened.
 
@@ -27,7 +29,7 @@ In Formatted view, typing `> text` stays literal even when automatic Markdown co
 
 The default font is **Iosevka Fixed SS03 Extended** (shown as **Iosevka Fixed Extended**), with embedded regular, bold, italic and bold italic faces. Its hyphens remain visually separate without disabling contextual font features. The two earlier Iosevka choices have been removed from the font menu; saved preferences using either adopt Fixed Extended. Standard font choices and text zoom are retained.
 
-In Formatted view, Enter continues a list or splits it at the cursor. Typed prefixes such as `1. ` or `- ` work even with automatic inline Markdown conversion off. Shift+Enter adds a line within the item. Backspace at the start of an item removes its marker while retaining its text; for a nested item it reduces the indentation by one level. Enter or Backspace on an empty top-level item exits the list; on an empty nested item it moves out one level. Backspace within text deletes normally.
+In Formatted view, Enter continues a list or splits it at the cursor. Typing a number prefix such as `1. ` starts a numbered list even with automatic inline Markdown conversion off. Typed `- `, `* ` and `+ ` stay plain text, even with automatic conversion on and after saving and reopening; use **Bullet list** (under ») to make bullets. Markdown view and imported Markdown still treat `- item` lines as bullets. Shift+Enter adds a line within the item. Backspace at the start of an item removes its marker while retaining its text; for a nested item it reduces the indentation by one level. Enter or Backspace on an empty top-level item exits the list; on an empty nested item it moves out one level. Backspace within text deletes normally.
 
 On desktop, notes automatically save to managed Markdown files. Ctrl+S flushes pending saves. Closing a note keeps it in Library; moving it to Trash allows recovery. The app restores workspace and editing position on launch, subject to the [known issues](ROADMAP.md#known-workspace-issues).
 
@@ -53,13 +55,14 @@ See [storage details](docs/ARCHITECTURE.md#storage-and-recovery) before changing
 
 ## Project documentation
 
-- [AGENTS.md](AGENTS.md): standing instructions for Codex.
+- [AGENTS.md](AGENTS.md): standing instructions for coding agents ([CLAUDE.md](CLAUDE.md) imports it for Claude Code).
 - [Architecture](docs/ARCHITECTURE.md): source layout, storage and implementation constraints.
 - [Testing](docs/TESTING.md): prerequisites, commands and verification limits.
 - [Editing behavior skill](skills/rotepad-editing-behavior/SKILL.md): interaction rules and regression scenarios for future editor work.
 - [Regression review skill](skills/rotepad-regression-review/SKILL.md): feature coverage, boundary scenarios and evidence required when checking updates.
 - [Desktop development](desktop/README.md): Electron builds and Windows packaging.
 - [Roadmap](ROADMAP.md): remaining issues and proposed work.
+- [2026-10-06 QA findings](docs/QA-2026-10-06.md): open bugs from exploratory browser testing, with reproductions.
 - [Changelog](changelog.md): completed changes and historical verification.
 - [Archived handoff](docs/archive/HANDOFF-2026-09-20.md) and [0.5.1 QA report](docs/archive/QA-0.5.1.md): historical context, not current instructions.
 

@@ -29,6 +29,9 @@ assert.equal(context.inline('\\_\\_literal\\_\\_'), '__literal__');
 assert.equal(context.inline('\\> literal'), '&gt; literal');
 assert.equal(context.markdown('\\> literal'), '<p>&gt; literal</p>');
 assert.equal(context.markdown('> intentional'), '<blockquote>intentional</blockquote>');
+assert.equal(context.markdown('\\- literal\n\t\\+ plus'), '<p>- literal</p><p>\t+ plus</p>');
+assert.equal(context.markdown('- intentional'), '<ul><li>intentional</li></ul>');
+assert.equal(context.inline('a \\- b'), 'a \\- b');
 function check(nodes, expected) {
   context.rich = e('DIV', nodes);
   assert.equal(context.richMarkdown(), expected);
@@ -42,6 +45,7 @@ check([e('P', [t('first')]), e('P', [e('BR')]), e('P', [t('third')])], 'first\n\
 check([e('PRE', [e('CODE', [t('a < b')])])], '```\na < b\n```');
 check([e('P', [t('literal * character')])], 'literal \\* character');
 check([e('P', [t('> literal')])], '\\> literal');
+check([e('P', [t('- dash')]), e('P', [t('+ plus\n- soft')]), e('P', [t('a - b')]), e('P', [t('--- run')]), e('P', [t('-tight')])], '\\- dash\n\\+ plus\n\\- soft\na - b\n--- run\n-tight');
 check([e('BLOCKQUOTE', [t('> literal inside quote')])], '> \\> literal inside quote');
 assert.equal(context.inline(context.markdownText('1 > 0')), '1 &gt; 0');
 check([e('P', [e('A', [t('unsafe')], { href: 'javascript:alert(1)' })])], 'unsafe');

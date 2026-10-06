@@ -22,7 +22,7 @@ function external(url){try{if(['https:','http:'].includes(new URL(url).protocol)
 function broadcast(channel,value,except){for(const state of windows.values())if(state!==except&&state.ready&&!state.win.isDestroyed())state.win.webContents.send(channel,value);}
 async function createWindow(paths=[],initial=false){
  let slot=1;while([...windows.values()].some(s=>s.slot===slot))slot++;
- const win=new BrowserWindow({width:1250,height:850,minWidth:650,minHeight:450,title:'Rotepad',show:false,autoHideMenuBar:true,...(process.platform==='win32'?{titleBarStyle:'hidden',titleBarOverlay:{height:34,color:'#dadde3',symbolColor:'#20242b'}}:{}),webPreferences:{preload:path.join(__dirname,'preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true}});
+ const win=new BrowserWindow({width:1250,height:850,minWidth:650,minHeight:450,title:'Rotepad',show:false,autoHideMenuBar:true,...(process.platform==='win32'?{titleBarStyle:'hidden',titleBarOverlay:{height:34,color:'#d6d6d3',symbolColor:'#0e0e0e'}}:{}),webPreferences:{preload:path.join(__dirname,'preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true}});
  const state={win,slot,initial,initialized:false,ready:false,paths,pending:new Map(),conflictIds:new Map(),pickerBusy:false,printBusy:false,printPreview:null,closePending:false,allowClose:false};
  windows.set(win.webContents.id,state);const id=win.webContents.id;
  win.setIcon(path.join(__dirname,'app','rotepad.ico'));win.removeMenu();
@@ -57,7 +57,7 @@ else app.whenReady().then(async()=>{
  });
  ipcMain.handle('window-new',async event=>{check(event);await libraryQueue;await createWindow();return true;});
  ipcMain.handle('desktop-info',event=>{check(event);return {name:'Rotepad',version:app.getVersion(),copyright:'© 2026, J.E. Rosaroso'};});
- ipcMain.handle('titlebar-theme',(event,theme)=>{const state=check(event);if(!['light','dark'].includes(theme))throw Error('Invalid title bar theme');if(process.platform==='win32')state.win.setTitleBarOverlay({height:34,color:theme==='dark'?'#191b1e':'#dadde3',symbolColor:theme==='dark'?'#f3f4f6':'#20242b'});});
+ ipcMain.handle('titlebar-theme',(event,theme)=>{const state=check(event);if(!['light','dark'].includes(theme))throw Error('Invalid title bar theme');if(process.platform==='win32')state.win.setTitleBarOverlay({height:34,color:theme==='dark'?'#191b1e':'#d6d6d3',symbolColor:theme==='dark'?'#f3f4f6':'#0e0e0e'});});
  ipcMain.handle('desktop-default-apps',async event=>{check(event);if(process.platform!=='win32')throw Error('Default app settings are available on Windows.');await shell.openExternal(process.env.PORTABLE_EXECUTABLE_DIR?'ms-settings:defaultapps':'ms-settings:defaultapps?registeredAppMachine=Rotepad');});
  ipcMain.handle('close-finish',(event,approved)=>{const state=check(event);if(!state.closePending)return;state.closePending=false;if(approved===true){state.allowClose=true;state.win.close();}else void sendQueued(state);});
  ipcMain.handle('note-files',event=>{check(event);return Object.entries(links).map(([id,file])=>({id,name:path.basename(file)}));});

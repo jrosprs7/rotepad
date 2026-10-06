@@ -71,13 +71,14 @@ node desktop/highlight-smoke.cjs
 node desktop/dash-smoke.cjs
 node desktop/font-smoke.cjs
 node desktop/quote-literal-smoke.cjs
+node desktop/bullet-literal-smoke.cjs
 ```
 
 They cover formatted defaults and view switching, literal typing and opt-in conversion, tables and indentation, responsive toolbar selection, inline formatting reversal, numbered continuation and empty-item exits. Select scripts according to the changed behavior.
 
 numbering-smoke.cjs also covers Backspace at the start of nonempty numbered/bulleted items, preserved inline formatting and following numbers, middle-item removal, undo, nested outdent and view round trips.
 
-list-interactions-smoke.cjs exercises typed and parsed prefixes with automatic conversion on/off, middle/start/end splits, menu-created lists, literal prefix removal, styles, Undo/Redo, soft-line round trips, selection deletion, paste, beforeinput/composition guards, source bullets/tasks/code, nested empty exit and reload. Add `--desktop` to run the same scenarios in Electron after preparing desktop/app; it explicitly configures a disposable notes folder. These checks do not establish exact parity with every Notepad version or verify a physical IME/mobile keyboard.
+list-interactions-smoke.cjs exercises typed numbered and parsed numbered/bullet prefixes with automatic conversion on/off, middle/start/end splits, menu-created lists, literal prefix removal, styles, Undo/Redo, soft-line round trips, selection deletion, paste, beforeinput/composition guards, source bullets/tasks/code, nested empty exit and reload. Add `--desktop` to run the same scenarios in Electron after preparing desktop/app; it explicitly configures a disposable notes folder. These checks do not establish exact parity with every Notepad version or verify a physical IME/mobile keyboard.
 
 tab-smoke.cjs checks Tab insertion and caret placement, Shift+Tab, Undo/Redo, inline styles, list nesting, code, table cell navigation, source/Split mode, multiline selection, modifier/composition guards, UI focus navigation, view conversion and reload. Use `--desktop` after preparing desktop/app for the same checks in isolated development Electron with a disposable notes folder.
 
@@ -88,6 +89,8 @@ highlight-smoke.cjs verifies equals-sign dividers, literal highlight syntax, int
 dash-smoke.cjs verifies literal two/three/long hyphen runs in Formatted/Markdown/Split, optional conversion on/off, ordinary Backspace, deletion, selection, middle insertion, styles, Undo/Redo, code/table text, literal paste/import, explicit divider round trips and reload. Its `--desktop` variant checks the managed file in an isolated profile before reload. Synthetic composition guards do not establish physical IME behavior. A separate blank-note multiline-paste finding remains in the roadmap.
 
 font-smoke.cjs checks the fresh Fixed Extended default and loading all four embedded faces. It counts separate ink groups in screenshots of hyphen runs, so font joining cannot pass merely because the underlying characters are correct. It covers typed runs, regular/bold/italic text, a combined-style rendering fixture, Formatted/Markdown/Split/Preview, print CSS, upgrading the previous default, preserved zoom and later font choices. Add `--desktop` for isolated development Electron. Print-media screenshots do not verify physical printing or exported PDF pixels; the combined-style fixture does not certify nested Markdown parsing or consecutive formatting shortcuts.
+
+bullet-literal-smoke.cjs checks that typed and pasted `- `, `* ` and `+ ` prefixes stay plain text with auto-Markdown off/on: space and Enter, middle split and caret, ordinary Backspace, empty marker lines, Undo/Redo, tabs, soft breaks, multiline paste after a paragraph, escapes (`\-`, `\+`, `\*`), views and reload. It also confirms unchanged neighbors: mid-line and repeated hyphens, typed numbered lists, typed headings with auto-Markdown on, the Bullet list command, Markdown-view bullets and continuation, and existing Markdown bullets. Add `--desktop` after preparation to also check the managed Markdown file in an isolated profile.
 
 quote-literal-smoke.cjs checks literal `> text` typing and plain-text paste with auto-Markdown off/on, first/following paragraphs, Enter/Backspace, Undo/Redo, view changes and reload. It also checks manual/source/existing quotes, exiting an empty quote created with the toolbar, styles, link-label escaping and code. Add `--desktop` after preparation to check the same interactions and actual managed-file contents in an isolated development profile. It does not migrate previously formatted quotes or certify physical IME behavior.
 

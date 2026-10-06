@@ -10,7 +10,9 @@ async function roundtrip(){const before=await page.evaluate(()=>editor.value);aw
  else{host=await chromium.launch({channel:'msedge',headless:true});page=await host.newPage();await page.goto(pathToFileURL(path.resolve(__dirname,'../Rotepad.html')).href);}
  const errors=[];page.on('pageerror',error=>errors.push(error.message));
  // The user's precise middle-of-line reproduction: typed vs parsed, both settings.
+ // Typed bullet prefixes stay literal text (bullet-literal-smoke.cjs); parsed Markdown bullets remain lists.
  for(const marker of ['1. ','4. ','- ','* ','+ '])for(const auto of [false,true])for(const creation of ['typed','parsed']){
+  if(creation==='typed'&&!/^\d/.test(marker))continue;
   const text='Indictment Malachi asks the Priests';await fresh(creation==='parsed'?marker+text:'',auto);
   if(creation==='typed')await page.keyboard.type(marker+text);
   await caretBefore('Malachi');await page.keyboard.press('Enter');
@@ -19,7 +21,7 @@ async function roundtrip(){const before=await page.evaluate(()=>editor.value);aw
   await roundtrip();
  }
  // Prefix removal before a typed line has become semantic list markup.
- for(const marker of ['3. ','- ']){await fresh();await page.keyboard.type(marker+'Keep all text');await caretBefore('Keep');await page.keyboard.press('Backspace');assert.equal(await page.locator('#rich-editor').innerText(),'Keep all text');assert.equal(await page.locator('#rich-editor li').count(),0);checks++;}
+ for(const marker of ['3. ']){await fresh();await page.keyboard.type(marker+'Keep all text');await caretBefore('Keep');await page.keyboard.press('Backspace');assert.equal(await page.locator('#rich-editor').innerText(),'Keep all text');assert.equal(await page.locator('#rich-editor li').count(),0);checks++;}
  for(const marker of ['1. ','- ']){
   // Menu-created list, start/middle/end split, empty exit, and live following numbers.
   await fresh();await page.evaluate(marker=>{rememberRange();if(marker==='1. ')$('numbered-list').click();else document.querySelector('[data-format=list]').click();},marker);

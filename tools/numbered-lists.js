@@ -1,10 +1,11 @@
 // List continuation is independent of optional inline Markdown conversion.
+// Only typed numbers start a list; typed -, * and + prefixes stay literal text.
 function typedListContext(){
  const selection=getSelection();if(!selection.rangeCount||!selection.isCollapsed)return null;
  const node=selection.anchorNode,element=node?.nodeType===3?node.parentElement:node;
  if(!element||element.closest('li,pre,code,[data-literal-markdown]'))return null;
  const block=element.closest('p,div');if(!block||block===rich||!rich.contains(block))return null;
- const match=/^([1-9]\d{0,8}\.|[-+*])[ \u00a0]+/.exec(block.textContent);if(!match)return null;
+ const match=/^([1-9]\d{0,8}\.)[ \u00a0]+/.exec(block.textContent);if(!match)return null;
  const before=selection.getRangeAt(0).cloneRange();before.setStart(block,0);
  const offset=before.toString().length;if(offset<match[0].length)return null;
  return {block,prefix:match[0].length,number:parseInt(match[1],10),offset};
@@ -67,8 +68,8 @@ function enterTypedList(event){
  event.preventDefault();event.stopImmediatePropagation();breakTypingGroup();majorEditBoundary('Continue list');
  const bookmark=removeTypedListPrefix(info);
  if(!info.block.textContent.trim()){caretAtBookmark(bookmark);info.block.replaceChildren(document.createElement('br'));const r=document.createRange();r.setStart(info.block,0);r.collapse(true);getSelection().removeAllRanges();getSelection().addRange(r);commitRich();return;}
- const list=document.createElement(Number.isFinite(info.number)?'ol':'ul'),item=document.createElement('li');
- if(list.tagName==='OL'&&info.number!==1)list.start=info.number;
+ const list=document.createElement('ol'),item=document.createElement('li');
+ if(info.number!==1)list.start=info.number;
  item.append(...info.block.childNodes);list.append(item);info.block.replaceWith(list);caretAtBookmark(bookmark);
  const tail=getSelection().getRangeAt(0).cloneRange();tail.setEnd(item,item.childNodes.length);
  const next=document.createElement('li');next.append(tail.extractContents());
