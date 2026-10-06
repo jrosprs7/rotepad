@@ -1,5 +1,35 @@
 # Rotepad changelog
 
+## 10/6/26 9:51 AM GMT+8 — Fix QA data-loss bugs
+
+Fixes the seven data-loss items from [QA-2026-10-06](docs/QA-2026-10-06.md) (D1–D7, plus F1–F2).
+
+- **Find no longer edits the note.**
+  - Enter, Shift+Enter, the arrow buttons and typing keep focus in the Find box. Previously the first Enter moved focus into the note, so the next Enter or letter replaced the match.
+  - The current match is highlighted in every view; in Markdown view it is drawn on the link layer, because an unfocused textarea hides its selection. Wrapped Markdown matches scroll into view.
+  - Escape closes Find and selects the match in the note.
+- **Selected list items no longer merge.**
+  - Tab/Shift+Tab and Increase/Decrease indent on a selection move whole items one level with direct DOM moves and keep the selection. This replaces the browser's indent/outdent for nested items, which produced LI-in-LI markup (saved as one merged line) and an intermediate Undo state that merged items.
+  - The caret stays where it was after a caret Shift+Tab.
+  - The new `moveListItemOut` helper is shared with Backspace outdent.
+- **Code blocks keep line breaks.** Enter, Shift+Enter and pasted lines in code blocks are saved as newlines; the serializer now reads `<br>` and line blocks instead of `textContent`.
+- **No literal ☐/☑ in Markdown.**
+  - Backspace at the start of a task's text removes its checkbox with the marker. Before, the first press did nothing visible and the paragraph kept the checkbox.
+  - Before Delete, Ctrl+Backspace or a selection deletion merges a following task into the line before, its checkbox is dropped.
+- **No `****` or `[](url)`.** Formatting with no visible text, left by Clear formatting, deletion or Replace all, is saved without markers.
+- **Pasting into a blank note keeps every line.** Text sitting directly in the editor is saved as its own line before the next block (previously `FirstSecond\nThird`). This also closes the older roadmap item about `--`/`---`.
+- **Literal `#`, `~~` and file names.**
+  - Typed `# text` (up to six `#`) and `~~text~~` stay literal after saving and reopening (`\#` line-leading escape; every `~` escaped).
+  - Bare names are auto-linked only with `http(s)://`, `www.` or a common web ending, so `notes.md`, `file.txt`, `node.js`, `README.md` and `end.Next` stay text, while `example.com` and `claude.ai` still link.
+  - Existing explicit links and notes are not rewritten.
+- Added desktop/data-safety-smoke.cjs (49 checks) and serializer/parser/link assertions in tests/formatting.cjs. The README, architecture, testing guide, QA status and roadmap are updated.
+
+| Area / expected behavior | Current verification | Result / limits |
+| --- | --- | --- |
+| The 7 data bugs | data-safety-smoke.cjs in Edge and `--desktop` (managed Markdown file checked), using real key presses. Against the previous commit it fails at the first check. The QA testers' independent bug checks went from 40 to 28 failures; every D/F1/F2 check passes | Passed. Two remaining tester checks disagree with existing rules rather than showing data loss: a moved item's children keep their numbering, and a Tab keeps exactly the user's selection. Synthetic paste events, not the real clipboard. |
+| Neighboring editing behavior | All root tests; formatted, toolbar, bold, numbering, list-interactions, tab, highlight, dash, font, quote-literal and bullet-literal smokes in Edge, plus the editor suites with `--desktop` | Passed on the final source. |
+| Desktop storage and shell | library, markdown-files, multi-window, note-tabs, shell-ui, single-row, print-preview, reveal and smoke.cjs on prepared desktop/app | Passed in isolated development profiles. Embedded fonts and shared helper copies verified unchanged/synchronized. No build, installation or publishing. |
+
 ## 10/6/26 1:19 AM GMT+8 — Literal bullet prefixes, Pure Ink light theme and exploratory QA
 
 - Typed `- `, `* ` and `+ ` prefixes in Formatted view now stay plain text on space and Enter, with automatic Markdown conversion off or on. Removed bullet markers from the typed-list Enter handler (root copy and tools/numbered-lists.js, kept in sync) and from the optional auto-Markdown space rule. Typed numbers (`1. `), typed headings with conversion on, the Bullet list command, Markdown view, imports and existing notes are unchanged.

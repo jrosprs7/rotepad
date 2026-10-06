@@ -188,10 +188,13 @@ const rich=$('rich-editor');let richRange=null,richHistory=[],historyIndex=-1,co
 const key='rotepad.draft.v1';let mode='rich',selection=[0,0],savedText='',storageOK=true;
 const escapeHTML=s=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function safeURL(s){try{const u=new URL(s);return ['https:','http:'].includes(u.protocol)?u.href:null}catch{return null}}
+// A bare name links only with a common web ending, so file names (notes.md, node.js) and run-on sentences (end.Next) stay text.
+const webEndings=new Set('com net org edu gov mil int io co ph us uk ca au nz de fr es it nl be ch at se no fi dk ie pl pt br mx ar jp kr cn tw hk sg my id th vn in eu info biz app dev ai me tv xyz site online tech store shop blog news page cloud'.split(' '));
+function webEnding(label){return webEndings.has(label.split(/[/?#:]/)[0].split('.').pop().toLowerCase())}
 function inline(s){
  let out='',i=0;
- // A line-leading \- or \+ is literal text the formatted editor escaped so it cannot reopen as a bullet.
- const literalMarker=/^(\s*)\\([-+])(?=[ \t])/.exec(s);if(literalMarker){out=escapeHTML(literalMarker[1]+literalMarker[2]);i=literalMarker[0].length;}
+ // A line-leading \-, \+ or \# is literal text the formatted editor escaped so it cannot reopen as a bullet or heading.
+ const literalMarker=/^(\s*)\\([-+]|#{1,6})(?=[ \t])/.exec(s);if(literalMarker){out=escapeHTML(literalMarker[1]+literalMarker[2]);i=literalMarker[0].length;}
  while(i<s.length){const rest=s.slice(i);let m;
   if((m=/^[^\s<>`*]*\\\.[^\s<>`*]*/.exec(rest))){out+='<span data-no-link="true">'+escapeHTML(m[0].replace(/\\\./g,'.'))+'</span>';i+=m[0].length;continue}
   if((m=/^\\([\\`*_\[\]~|=>])/.exec(rest))){out+=escapeHTML(m[1]);i+=m[0].length;continue}
@@ -209,7 +212,7 @@ function inline(s){
    for(const [open,close] of [['(',')'],['[',']'],['{','}']])while(label.endsWith(close)&&label.split(close).length>label.split(open).length)label=label.slice(0,-1);
    label=label.replace(/[.,!?;:']+$/g,'');
    const u=safeURL(/^https?:\/\//i.test(label)?label:'https://'+label);
-   if(u){out+='<a href="'+escapeHTML(u)+'" target="_blank" rel="noopener noreferrer">'+escapeHTML(label)+'</a>';i+=label.length;continue}
+   if(u&&(/^(?:https?:\/\/|www\.)/i.test(label)||webEnding(label))){out+='<a href="'+escapeHTML(u)+'" target="_blank" rel="noopener noreferrer">'+escapeHTML(label)+'</a>';i+=label.length;continue}
   }
   out+=escapeHTML(s[i++]);
  }return out;
@@ -264,10 +267,17 @@ function rememberRange(){const s=getSelection();if(s.rangeCount&&rich.contains(s
 function restoreRange(){rich.focus();const s=getSelection();if(richRange&&rich.contains(richRange.startContainer)){s.removeAllRanges();s.addRange(richRange)}else{const r=document.createRange();r.selectNodeContents(rich);r.collapse(false);s.removeAllRanges();s.addRange(r)}}
 function caretOffset(){const s=getSelection();if(!s.rangeCount||!rich.contains(s.anchorNode))return 0;const r=s.getRangeAt(0).cloneRange();r.selectNodeContents(rich);r.setEnd(s.anchorNode,s.anchorOffset);return r.toString().length}
 function placeCaret(offset){const walker=document.createTreeWalker(rich,NodeFilter.SHOW_TEXT);let n,left=Math.max(0,offset),last;while(n=walker.nextNode()){last=n;if(left<=n.length){const r=document.createRange();r.setStart(n,left);r.collapse(true);const s=getSelection();s.removeAllRanges();s.addRange(r);rememberRange();return}left-=n.length}const r=document.createRange();if(last)r.setStart(last,last.length);else{r.selectNodeContents(rich)}r.collapse(false);const s=getSelection();s.removeAllRanges();s.addRange(r);rememberRange()}
-function markdownText(s){return s.replace(/\u00a0/g,' ').replace(/([\\*_`\[\]=>])/g,'\\$1')}
+function markdownText(s){return s.replace(/\u00a0/g,' ').replace(/([\\*_`\[\]=>~])/g,'\\$1')}
 function richMarkdown(){
  function content(node){return [...node.childNodes].map(visit).join('')}
+ // Literal line-leading -, + and # cannot reopen as a bullet or heading.
+ function paragraph(t){return (t==='\n'?'':t.replace(/\n$/,'').replace(/^([ \t]*)([-+])(?=[ \t])/gm,'$1\\$2').replace(/^(#{1,6})(?=[ \t])/gm,'\\$1'))+'\n'}
+ // Code keeps Enter/Shift+Enter breaks (<br>) and line blocks as newlines; textContent would join them.
+ function codeText(node){let text='',afterBlock=false;for(const c of node.childNodes){const block=c.nodeType===1&&/^(DIV|P)$/.test(c.tagName);if((block||afterBlock)&&text&&!text.endsWith('\n'))text+='\n';text+=c.nodeType===3?c.data:c.nodeType!==1?'':c.tagName==='BR'?'\n':codeText(c);afterBlock=block}return text}
  function visit(n){if(n.nodeType===3)return markdownText(n.data);if(n.nodeType!==1)return '';const tag=n.tagName,t=content(n);
+  // Empty formatting left by deletion or clearing must not write bare markers such as **** or [](url).
+  if(/^(STRONG|B|EM|I|U|DEL|S|STRIKE|MARK|A)$/.test(tag)&&!t.trim())return t;
+  if(tag==='CODE'&&!n.textContent)return '';
   if(tag==='TABLE'){const rows=[...n.rows].map(row=>[...row.cells].map(cell=>content(cell).replace(/\n$/,'').replace(/\n/g,'<br>').replace(/\|/g,'\\|')));if(!rows.length)return '';return [rows[0],rows[0].map(()=>'---'),...rows.slice(1)].map(row=>'| '+row.join(' | ')+' |').join('\n')+'\n';}
   if(tag==='BR')return '\n';
   if(tag==='STRONG'||tag==='B')return '**'+t+'**';
@@ -279,15 +289,19 @@ function richMarkdown(){
   if(n.getAttribute('class')==='task-box')return '';
   if(tag==='CODE')return '`'+n.textContent+'`';
   if(tag==='A'){const href=safeURL(n.getAttribute('href'));return href?'['+t+']('+href.replace(/\(/g,'%28').replace(/\)/g,'%29')+')':t}
-  if(tag==='PRE')return '```\n'+n.textContent.replace(/\n$/,'')+'\n```\n';
+  if(tag==='PRE')return '```\n'+codeText(n).replace(/\n$/,'')+'\n```\n';
   if(tag==='HR')return '***\n';
   if(tag==='UL'||tag==='OL')return (n.parentElement?.tagName==='LI'?'\n':'')+[...n.children].map((li,i)=>(tag==='UL'?'- ':(i+(Number(n.getAttribute('start'))||1))+'. ')+(li.getAttribute('data-checked')!==null&&li.getAttribute('data-checked')!==undefined?'['+(li.getAttribute('data-checked')==='true'?'x':' ')+'] ':'')+content(li).replace(/\n$/,'').replace(/\n/g,'\n    ')+'\n').join('');
   if(/^H[1-6]$/.test(tag))return '#'.repeat(Number(tag[1]))+' '+t.replace(/\n$/,'')+'\n';
   if(tag==='BLOCKQUOTE')return t.replace(/\n$/,'').split('\n').map(l=>'> '+l).join('\n')+'\n';
-  if(tag==='P'||tag==='DIV')return (t==='\n'?'':t.replace(/\n$/,'').replace(/^([ \t]*)([-+])(?=[ \t])/gm,'$1\\$2'))+'\n';
+  if(tag==='P'||tag==='DIV')return paragraph(t);
   return t;
  }
- return content(rich).replace(/\n$/,'');
+ // Text pasted into an empty editor sits outside any paragraph; keep it on its own line before the next block.
+ let out='',run='';
+ for(const n of rich.childNodes){if(n.nodeType===1&&/^(P|DIV|H[1-6]|UL|OL|BLOCKQUOTE|PRE|HR|TABLE)$/.test(n.tagName)){if(run)out+=run.trim()?paragraph(run):run;run='';out+=visit(n)}else run+=visit(n)}
+ if(run)out+=run.trim()?paragraph(run):run;
+ return out.replace(/\n$/,'');
 }
 function markAutoLinks(){rich.querySelectorAll('a').forEach(a=>{a.target='_blank';a.rel='noopener noreferrer';a.title='Click for link options · Ctrl+click to open';const text=a.textContent;const url=safeURL(/^https?:\/\//i.test(text)?text:'https://'+text);if(url===a.href)a.dataset.auto='true'});rich.querySelectorAll('li[data-checked]').forEach(li=>{if(!li.querySelector('.task-box')){li.dataset.checked='false';const box=document.createElement('span');box.className='task-box';box.contentEditable='false';box.setAttribute('role','checkbox');box.setAttribute('aria-checked','false');box.setAttribute('aria-label','Mark task complete');box.tabIndex=0;box.textContent='☐';li.prepend(box)}})}
 function loadRich(){rich.innerHTML=editor.value?markdown(editor.value):'';markAutoLinks();richRange=null;richHistory=[];historyIndex=-1;recordRich()}
@@ -387,9 +401,12 @@ function findMatches(text,query,matchCase=false){if(!query)return [];const escap
 let findHits=[],findIndex=-1,findMap=[],findRoot=null,findSignature='';
 function searchable(root){const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let n,text='',map=[],lastBlock=null;while(n=walker.nextNode()){if(n.parentElement.closest('.task-box'))continue;const block=n.parentElement.closest('p,li,h1,h2,h3,h4,h5,h6,pre,blockquote,div');if(lastBlock&&block!==lastBlock)text+='\n';map.push({node:n,start:text.length,end:text.length+n.length});text+=n.data;lastBlock=block}return {text,map}}
 function rangeFor(hit){const r=document.createRange();const first=findMap.find(n=>n.end>hit.start),last=[...findMap].reverse().find(n=>n.start<hit.end);if(!first||!last)return null;r.setStart(first.node,Math.max(0,hit.start-first.start));r.setEnd(last.node,Math.min(last.node.length,hit.end-last.start));return r}
-function paintFind(){if(!globalThis.CSS?.highlights||!globalThis.Highlight)return;CSS.highlights.delete('find-results');CSS.highlights.delete('find-current');if(findRoot){const ranges=findHits.map(rangeFor).filter(Boolean);CSS.highlights.set('find-results',new Highlight(...ranges));if(ranges[findIndex])CSS.highlights.set('find-current',new Highlight(ranges[findIndex]))}}
+// Markdown view paints matches on the text-aligned link layer, because an unfocused textarea hides its selection.
+function layerRange(hit){if(linkLayer.textContent.length!==editor.value.length+1)return null;const walker=document.createTreeWalker(linkLayer,NodeFilter.SHOW_TEXT),r=document.createRange();let n,at=0,started=false;while(n=walker.nextNode()){const end=at+n.length;if(!started&&hit.start<end){r.setStart(n,hit.start-at);started=true}if(started&&hit.end<=end){r.setEnd(n,hit.end-at);return r}at=end}return null}
+function paintFind(){if(!globalThis.CSS?.highlights||!globalThis.Highlight)return;CSS.highlights.delete('find-results');CSS.highlights.delete('find-current');const ranges=findHits.map(findRoot?rangeFor:layerRange).filter(Boolean);CSS.highlights.set('find-results',new Highlight(...ranges));if(ranges[findIndex])CSS.highlights.set('find-current',new Highlight(ranges[findIndex]))}
 function refreshFind(reset=true){findRoot=mode==='rich'?rich:mode==='preview'?preview:null;const data=findRoot?searchable(findRoot):{text:editor.value,map:[]};findMap=data.map;const signature=mode+'\0'+$('find-text').value+'\0'+$('find-case').checked+'\0'+data.text;findHits=findMatches(data.text,$('find-text').value,$('find-case').checked);if(reset||findSignature!==signature)findIndex=findHits.length?0:-1;findSignature=signature;findIndex=Math.min(findIndex,findHits.length-1);$('find-status').textContent=$('find-text').value?(findHits.length?(findIndex+1)+' of '+findHits.length:'No matches'):'Type to find';$('replace-one').disabled=$('replace-all').disabled=mode==='preview'||!findHits.length;$('find-prev').disabled=$('find-next').disabled=!findHits.length;paintFind()}
-function selectFind(){if(findIndex<0)return;const hit=findHits[findIndex];if(findRoot){const r=rangeFor(hit);if(r){const s=getSelection();s.removeAllRanges();s.addRange(r);r.startContainer.parentElement.scrollIntoView({block:'nearest'});if(mode==='rich')richRange=r.cloneRange()}}else{editor.focus();editor.setSelectionRange(hit.start,hit.end);const line=editor.value.slice(0,hit.start).split('\n').length-1;editor.scrollTop=line*textZoomSize(prefs.zoom)*Number(prefs.spacing)}$('find-status').textContent=(findIndex+1)+' of '+findHits.length;paintFind()}
+// Moving between matches keeps focus in Find, so Enter or typing there never edits the note; closing Find selects the match.
+function selectFind(){if(findIndex<0)return;const hit=findHits[findIndex],inFind=findPanel.contains(document.activeElement);if(findRoot){const r=rangeFor(hit);if(r){if(!inFind){const s=getSelection();s.removeAllRanges();s.addRange(r)}r.startContainer.parentElement.scrollIntoView({block:'nearest'});if(mode==='rich')richRange=r.cloneRange()}}else{if(!inFind)editor.focus();editor.setSelectionRange(hit.start,hit.end);const box=layerRange(hit)?.getBoundingClientRect(),view=editor.getBoundingClientRect();if(box?.height){if(box.top<view.top||box.bottom>view.bottom)editor.scrollTop+=box.top-view.top-editor.clientHeight/3}else{const line=editor.value.slice(0,hit.start).split('\n').length-1;editor.scrollTop=line*textZoomSize(prefs.zoom)*Number(prefs.spacing)}syncLinks()}$('find-status').textContent=(findIndex+1)+' of '+findHits.length;paintFind()}
 function openFind(){rememberRange();findPanel.hidden=false;refreshFind();$('find-text').focus();$('find-text').select()}
 function closeFind(){findPanel.hidden=true;if(globalThis.CSS?.highlights){CSS.highlights.delete('find-results');CSS.highlights.delete('find-current')}if(mode==='rich')restoreRange();else if(mode!=='preview')editor.focus()}
 $('find-toggle').onclick=()=>findPanel.hidden?openFind():closeFind();$('find-close').onclick=closeFind;$('find-text').oninput=()=>refreshFind();$('find-case').onchange=()=>refreshFind();
@@ -828,9 +845,24 @@ function indentSelection(out=false){
  if(mode==='rich'){
   restoreRange();const s=getSelection(),node=s.anchorNode,el=node?.nodeType===3?node.parentElement:node;
   if(el?.closest('li')){
-   if(out&&s.isCollapsed&&outdentListItem(el.closest('li')))return;
-   if(!out&&el.closest('li').previousElementSibling?.tagName!=='LI')return;
-   document.execCommand(out?'outdent':'indent');
+   // Move whole selected items one level and keep the selection; browser indent/outdent can nest LI in LI or a list in a list.
+   const r=s.getRangeAt(0),own=li=>[...li.childNodes].some(c=>!['UL','OL'].includes(c.nodeName)&&r.intersectsNode(c));
+   let items=s.isCollapsed?[el.closest('li')]:[...rich.querySelectorAll('li')].filter(own);
+   items=items.filter(li=>!items.some(other=>other!==li&&other.contains(li)));
+   if(!items.length||!out&&items[0].previousElementSibling?.tagName!=='LI')return;
+   if(!out||items.some(li=>li.parentElement.parentElement?.closest('li'))){
+    const marks=[document.createElement('span'),document.createElement('span')],end=r.cloneRange();end.collapse(false);end.insertNode(marks[1]);r.insertNode(marks[0]);
+    for(const item of items){
+     if(out){moveListItemOut(item);continue;}
+     const previous=item.previousElementSibling;if(previous?.tagName!=='LI')continue;
+     let list=previous.lastElementChild;
+     if(list?.tagName!==item.parentElement.tagName){list=item.parentElement.cloneNode(false);list.removeAttribute('id');list.removeAttribute('start');previous.append(list);}
+     list.append(item);
+    }
+    const kept=document.createRange();kept.setStartAfter(marks[0]);kept.setEndBefore(marks[1]);marks.forEach(mark=>mark.remove());s.removeAllRanges();s.addRange(kept);rememberRange();commitRich();return;
+   }
+   // Top-level items leave the list through the browser command.
+   document.execCommand('outdent');
    const bookmark=s.isCollapsed?document.createElement('span'):null;if(bookmark)s.getRangeAt(0).insertNode(bookmark);
    for(const list of rich.querySelectorAll('ul>ul,ul>ol,ol>ul,ol>ol')){if(list.previousElementSibling?.tagName==='LI')list.previousElementSibling.append(list);}
    if(bookmark)caretAtBookmark(bookmark);commitRich();return;
@@ -892,13 +924,16 @@ function removeTypedListPrefix(info){
  prefix.deleteContents();return bookmark;
 }
 function caretAtBookmark(bookmark){const range=document.createRange();range.setStartBefore(bookmark);range.collapse(true);bookmark.remove();getSelection().removeAllRanges();getSelection().addRange(range);rememberRange();}
-function outdentListItem(item){
+function moveListItemOut(item){
  const list=item.parentElement,parentItem=list.parentElement.closest('li');if(!parentItem)return false;
  const tail=list.cloneNode(false);tail.removeAttribute('id');
  if(list.tagName==='OL')tail.start=(Number(list.getAttribute('start'))||1)+[...list.children].indexOf(item)+1;
  while(item.nextSibling)tail.append(item.nextSibling);
  parentItem.after(item);if(tail.children.length)item.append(tail);if(!list.children.length)list.remove();
- if(!item.childNodes.length)item.append(document.createElement('br'));
+ if(!item.childNodes.length)item.append(document.createElement('br'));return true;
+}
+function outdentListItem(item){
+ if(!moveListItemOut(item))return false;
  const caret=document.createRange();caret.setStart(item,0);caret.collapse(true);getSelection().removeAllRanges();getSelection().addRange(caret);rememberRange();commitRich();updateFormatting();return true;
 }
 function backspaceListStart(event){
@@ -912,8 +947,9 @@ function backspaceListStart(event){
   const bookmark=removeTypedListPrefix(typed);caretAtBookmark(bookmark);commitRich();updateFormatting();return;
  }
  if(!rich.contains(item)||isEmptyListItem(item))return;
- const before=selection.getRangeAt(0).cloneRange();before.setStart(item,0);
- if(before.toString().replace(/[\u200b\uFEFF]/g,'')||before.cloneContents().querySelector('br,img,hr,table,ul,ol'))return;
+ // A task's checkbox is part of its marker, not text before the caret.
+ const before=selection.getRangeAt(0).cloneRange();before.setStart(item,0);const leading=before.cloneContents();leading.querySelectorAll('.task-box').forEach(box=>box.remove());
+ if(leading.textContent.replace(/[\u200b\uFEFF]/g,'')||leading.querySelector('br,img,hr,table,ul,ol'))return;
  const list=item.parentElement;if(!['OL','UL'].includes(list.tagName))return;
  event.preventDefault();event.stopImmediatePropagation();breakTypingGroup();majorEditBoundary('Remove list marker');
  if(outdentListItem(item))return;
@@ -921,12 +957,22 @@ function backspaceListStart(event){
  if(list.tagName==='OL')after.start=(Number(list.getAttribute('start'))||1)+index+1;
  while(item.nextSibling)after.append(item.nextSibling);
  const nested=[...item.children].filter(child=>['OL','UL'].includes(child.tagName));nested.forEach(child=>child.remove());
- const paragraph=document.createElement('p');paragraph.append(...item.childNodes);item.remove();list.after(paragraph,...nested);
+ item.querySelector(':scope>.task-box')?.remove();const paragraph=document.createElement('p');paragraph.append(...item.childNodes);item.remove();list.after(paragraph,...nested);
  if(after.children.length)(nested.at(-1)||paragraph).after(after);if(!list.children.length)list.remove();
  const caret=document.createRange();caret.setStart(paragraph,0);caret.collapse(true);selection.removeAllRanges();selection.addRange(caret);rememberRange();commitRich();updateFormatting();
 }
 rich.addEventListener('keydown',backspaceListStart,true);
 rich.addEventListener('beforeinput',backspaceListStart,true);
+// A deletion that merges a task item into the line before would flatten its checkbox into a literal ☐; drop that checkbox first.
+function dropMergedTaskBox(event){
+ if(event.defaultPrevented||composing||!/^(delete|insert)/.test(event.inputType))return;
+ const s=getSelection();if(!s.rangeCount)return;const r=s.getRangeAt(0);if(!rich.contains(r.commonAncestorContainer))return;
+ const backward=r.collapsed&&/Backward$/.test(event.inputType);if(r.collapsed&&!backward&&!/Forward$/.test(event.inputType))return;
+ const boxes=[...rich.querySelectorAll('.task-box')],box=backward?boxes.filter(b=>r.comparePoint(b,0)<0).pop():boxes.find(b=>r.comparePoint(b,0)>0);if(!box)return;
+ const gap=document.createRange();if(backward){gap.setStartAfter(box);gap.setEnd(r.startContainer,r.startOffset);}else{gap.setStart(r.endContainer,r.endOffset);gap.setEndBefore(box);}
+ if(!gap.toString().trim()&&!gap.cloneContents().querySelector('br,img,hr,table'))box.remove();
+}
+rich.addEventListener('beforeinput',dropMergedTaskBox,true);
 editingAction('Numbered list','numbered-list',()=>{
  if(mode==='rich'){restoreRange();document.execCommand('insertOrderedList');commitRich();return;}
  const a=editor.selectionStart,b=editor.selectionEnd,start=a?editor.value.lastIndexOf('\n',a-1)+1:0;

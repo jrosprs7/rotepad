@@ -40,9 +40,24 @@ function indentSelection(out=false){
  if(mode==='rich'){
   restoreRange();const s=getSelection(),node=s.anchorNode,el=node?.nodeType===3?node.parentElement:node;
   if(el?.closest('li')){
-   if(out&&s.isCollapsed&&outdentListItem(el.closest('li')))return;
-   if(!out&&el.closest('li').previousElementSibling?.tagName!=='LI')return;
-   document.execCommand(out?'outdent':'indent');
+   // Move whole selected items one level and keep the selection; browser indent/outdent can nest LI in LI or a list in a list.
+   const r=s.getRangeAt(0),own=li=>[...li.childNodes].some(c=>!['UL','OL'].includes(c.nodeName)&&r.intersectsNode(c));
+   let items=s.isCollapsed?[el.closest('li')]:[...rich.querySelectorAll('li')].filter(own);
+   items=items.filter(li=>!items.some(other=>other!==li&&other.contains(li)));
+   if(!items.length||!out&&items[0].previousElementSibling?.tagName!=='LI')return;
+   if(!out||items.some(li=>li.parentElement.parentElement?.closest('li'))){
+    const marks=[document.createElement('span'),document.createElement('span')],end=r.cloneRange();end.collapse(false);end.insertNode(marks[1]);r.insertNode(marks[0]);
+    for(const item of items){
+     if(out){moveListItemOut(item);continue;}
+     const previous=item.previousElementSibling;if(previous?.tagName!=='LI')continue;
+     let list=previous.lastElementChild;
+     if(list?.tagName!==item.parentElement.tagName){list=item.parentElement.cloneNode(false);list.removeAttribute('id');list.removeAttribute('start');previous.append(list);}
+     list.append(item);
+    }
+    const kept=document.createRange();kept.setStartAfter(marks[0]);kept.setEndBefore(marks[1]);marks.forEach(mark=>mark.remove());s.removeAllRanges();s.addRange(kept);rememberRange();commitRich();return;
+   }
+   // Top-level items leave the list through the browser command.
+   document.execCommand('outdent');
    const bookmark=s.isCollapsed?document.createElement('span'):null;if(bookmark)s.getRangeAt(0).insertNode(bookmark);
    for(const list of rich.querySelectorAll('ul>ul,ul>ol,ol>ul,ol>ol')){if(list.previousElementSibling?.tagName==='LI')list.previousElementSibling.append(list);}
    if(bookmark)caretAtBookmark(bookmark);commitRich();return;

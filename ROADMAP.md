@@ -13,10 +13,9 @@ These findings remain unresolved in the documentation. Reproduce against the cur
 - [ ] Restoring the last deleted note should reopen it, including the same-active-ID case.
 - [ ] Preserve an empty workspace after all notes are moved to Trash and the app restarts.
 - [ ] Creating a note while viewing Trash should switch the sidebar to Open/Library.
-- [ ] Multiline plain-text paste into a completely blank Formatted note can lose a line boundary on serialization. Reproduced on 2026-09-27 with `--` followed by a newline and `---`: DOM `--<p>---</p>` serializes as five contiguous hyphens. The issue remains with the smart-dash handlers disabled; pasting after an existing paragraph prefix retains the boundary. Fix separately from typography.
 - [ ] Review combined bold/italic parsing and consecutive formatting shortcuts separately from fonts. The existing parser leaves literal asterisks in `***text***`; consecutive Ctrl+B/Ctrl+I scenarios during font checks also did not retain both styles and need an isolated interaction review. The combined font face itself loads and renders correctly.
 
-- [ ] Triage the [2026-10-06 exploratory QA findings](docs/QA-2026-10-06.md). Start with the data-loss items: Enter in Find replacing the match; selection Shift+Tab/Tab-then-Undo merging list items; code-block line breaks; checkbox glyphs, empty formatting markers and other literal text written to Markdown. Then the reload-format changes (`# ` and `~~` literals, file names auto-linked).
+- [ ] Triage the remaining [2026-10-06 exploratory QA findings](docs/QA-2026-10-06.md). Its data-loss items (D1–D7) and the `#`/`~~` and file-name link changes (F1–F2) are fixed. Next: format changes on reload (F3–F12), Clear formatting reachable by mouse, caret after list commands and Undo, Outline scrolling, large-paste performance, and backup/Trash/keyboard issues.
 
 Original reproductions are in the [0.5.1 QA report](docs/archive/QA-0.5.1.md). Its closed-note printing issue was resolved for desktop in 0.7.0 and is recorded in the changelog.
 

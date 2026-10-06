@@ -72,6 +72,7 @@ node desktop/dash-smoke.cjs
 node desktop/font-smoke.cjs
 node desktop/quote-literal-smoke.cjs
 node desktop/bullet-literal-smoke.cjs
+node desktop/data-safety-smoke.cjs
 ```
 
 They cover formatted defaults and view switching, literal typing and opt-in conversion, tables and indentation, responsive toolbar selection, inline formatting reversal, numbered continuation and empty-item exits. Select scripts according to the changed behavior.
@@ -86,9 +87,18 @@ tab-smoke.cjs checks Tab insertion and caret placement, Shift+Tab, Undo/Redo, in
 
 highlight-smoke.cjs verifies equals-sign dividers, literal highlight syntax, intentional highlights, typing/paste/parsed input, conversion off/on, view round trips, Backspace reversal, code, links and neighboring styles. With `--desktop` it uses a disposable profile/notes folder, checks the managed Markdown file and restarts development Electron. Otherwise it checks browser reload. Prepare desktop/app before the desktop variant.
 
-dash-smoke.cjs verifies literal two/three/long hyphen runs in Formatted/Markdown/Split, optional conversion on/off, ordinary Backspace, deletion, selection, middle insertion, styles, Undo/Redo, code/table text, literal paste/import, explicit divider round trips and reload. Its `--desktop` variant checks the managed file in an isolated profile before reload. Synthetic composition guards do not establish physical IME behavior. A separate blank-note multiline-paste finding remains in the roadmap.
+dash-smoke.cjs verifies literal two/three/long hyphen runs in Formatted/Markdown/Split, optional conversion on/off, ordinary Backspace, deletion, selection, middle insertion, styles, Undo/Redo, code/table text, literal paste/import, explicit divider round trips and reload. Its `--desktop` variant checks the managed file in an isolated profile before reload. Synthetic composition guards do not establish physical IME behavior. Blank-note multiline paste is covered by data-safety-smoke.cjs.
 
 font-smoke.cjs checks the fresh Fixed Extended default and loading all four embedded faces. It counts separate ink groups in screenshots of hyphen runs, so font joining cannot pass merely because the underlying characters are correct. It covers typed runs, regular/bold/italic text, a combined-style rendering fixture, Formatted/Markdown/Split/Preview, print CSS, upgrading the previous default, preserved zoom and later font choices. Add `--desktop` for isolated development Electron. Print-media screenshots do not verify physical printing or exported PDF pixels; the combined-style fixture does not certify nested Markdown parsing or consecutive formatting shortcuts.
+
+data-safety-smoke.cjs covers the fixed data-loss findings from the [2026-10-06 QA](QA-2026-10-06.md):
+- Find: Enter, ↓ and typing keep focus and leave the note unchanged in Formatted and Markdown views; Escape selects the match; a wrapped, far-down Markdown match scrolls into view.
+- Lists: selected nested items with Shift+Tab/Tab and Undo for numbers and bullets, a partial-word selection, the first-item no-op and caret Shift+Tab.
+- Code: Enter, Shift+Enter and paste in code blocks.
+- Tasks: Backspace, Delete, Ctrl+Backspace and selection deletion across task items, with no ☐/☑ in the Markdown.
+- Saving: Clear formatting and Replace all never write empty markers; multiline paste into a blank note keeps every line; literal `#` and `~~` survive; file names are not auto-linked while web addresses are; reload.
+
+Add `--desktop` to also check the managed Markdown file.
 
 bullet-literal-smoke.cjs checks that typed and pasted `- `, `* ` and `+ ` prefixes stay plain text with auto-Markdown off/on: space and Enter, middle split and caret, ordinary Backspace, empty marker lines, Undo/Redo, tabs, soft breaks, multiline paste after a paragraph, escapes (`\-`, `\+`, `\*`), views and reload. It also confirms unchanged neighbors: mid-line and repeated hyphens, typed numbered lists, typed headings with auto-Markdown on, the Bullet list command, Markdown-view bullets and continuation, and existing Markdown bullets. Add `--desktop` after preparation to also check the managed Markdown file in an isolated profile.
 

@@ -46,6 +46,17 @@ check([e('PRE', [e('CODE', [t('a < b')])])], '```\na < b\n```');
 check([e('P', [t('literal * character')])], 'literal \\* character');
 check([e('P', [t('> literal')])], '\\> literal');
 check([e('P', [t('- dash')]), e('P', [t('+ plus\n- soft')]), e('P', [t('a - b')]), e('P', [t('--- run')]), e('P', [t('-tight')])], '\\- dash\n\\+ plus\n\\- soft\na - b\n--- run\n-tight');
+// QA 2026-10-06: literal # and ~, empty formatting, code line breaks and bare text before a block.
+check([e('P', [t('# not heading')]), e('P', [t('## two #tag')]), e('P', [t('####### seven')]), e('P', [t('~~not struck~~ a~b')])], '\\# not heading\n\\## two #tag\n####### seven\n\\~\\~not struck\\~\\~ a\\~b');
+assert.equal(context.markdown('\\# not heading\n\\## two'), '<p># not heading</p><p>## two</p>');
+assert.equal(context.inline('\\~\\~not struck\\~\\~'), '~~not struck~~');
+check([e('P', [e('STRONG', [t('bold')]), t('word'), e('STRONG', []), t(' '), e('EM', [t(' ')]), e('A', [], { href: 'https://e.example/' }), e('MARK', [])])], '**bold**word  ');
+check([e('PRE', [e('CODE', [t('line1'), e('BR'), t('inserted\nline2'), e('DIV', [t('block')])])])], '```\nline1\ninserted\nline2\nblock\n```');
+check([t('First'), e('P', [t('Second')]), e('P', [t('Third')])], 'First\nSecond\nThird');
+check([t('- bare'), e('P', [e('BR')]), e('P', [t('beta')])], '\\- bare\n\nbeta');
+check([t('only bare text')], 'only bare text');
+for (const [text, linked] of [['notes.md', false], ['node.js', false], ['end.Next', false], ['example.com', true], ['claude.ai', true], ['www.site.md', true], ['https://x.md/a', true], ['example.com/path?q=1', true]])
+  assert.equal(context.inline(text).includes('<a '), linked, text);
 check([e('BLOCKQUOTE', [t('> literal inside quote')])], '> \\> literal inside quote');
 assert.equal(context.inline(context.markdownText('1 > 0')), '1 &gt; 0');
 check([e('P', [e('A', [t('unsafe')], { href: 'javascript:alert(1)' })])], 'unsafe');
