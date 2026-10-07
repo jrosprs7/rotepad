@@ -16,7 +16,7 @@ The serializer also protects other literal text. A paragraph's column-0 `#`–`#
 
 Bare-name auto-linking (typing, Markdown parsing and the Markdown-view link layer) requires `http(s)://`, `www.` or a common web ending (the `webEndings` set), so file names and run-on sentences stay text. The explicit link dialog still accepts any valid host.
 
-Commands that run after focus has left the editor (the » menu, dialogs, Find, the Outline) return to it through restoreRange(), which focuses with `preventScroll`. A plain focus() made the browser jump to the top of the note before the saved range was restored, and restoring a range does not scroll back.
+Commands that run after focus has left the editor (the » menu, dialogs, Find, the Outline) return to it through restoreRange(), which focuses with `preventScroll`. A plain focus() made the browser jump to the top of the note before the saved range was restored, and restoring a range does not scroll back. The » summary also cancels its mousedown in Formatted view, like the toolbar format buttons. Opening the menu by mouse therefore keeps the editor's selection and focus, so selection-dependent items such as Clear formatting stay enabled. A capture-phase Escape handler closes » when focus is still in the note.
 
 Find keeps focus in its panel. Moving between matches paints the current match with the CSS highlight API (on the formatted editor, Preview, or the Markdown-view link layer, which mirrors the textarea text). It remembers the match as the editor range without moving the document selection or textarea focus. Closing Find restores that range or the textarea selection. Markdown-view scrolling uses the link-layer match position, so wrapped lines are accounted for.
 

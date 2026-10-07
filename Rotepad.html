@@ -754,6 +754,8 @@ const compactItems=[document.querySelector('[data-format=quote]'),$('paragraph-s
 const overflowControls=document.createElement('div');overflowControls.id='overflow-controls';overflowControls.className='format';
 morePanel.prepend(overflowControls);morePanel.classList.add('format');
 const overflowSummary=$('more-format').querySelector('summary');overflowSummary.textContent='»';overflowSummary.title='More tools';overflowSummary.setAttribute('aria-label','More tools');
+// Opening » by mouse keeps the editor selection, so selection tools such as Clear formatting stay enabled; the click still toggles the menu.
+overflowSummary.addEventListener('mousedown',e=>{if(mode==='rich'){rememberRange();e.preventDefault();}});
 compactVisible.append(...compactItems);
 for(const child of [...mainToolbar.children])if(![$('find-toggle'),$('more-format')].includes(child))child.style.display='none';
 mainToolbar.append(compactCore,compactVisible,$('find-toggle'),$('more-format'));
@@ -774,6 +776,8 @@ new ResizeObserver(fitToolbar).observe(mainToolbar);fitToolbar();document.fonts.
 compactApp.menu.addEventListener('click',e=>{if(e.target.closest('button'))compactApp.menu.open=false;});
 document.addEventListener('pointerdown',e=>{if(!compactApp.menu.contains(e.target))compactApp.menu.open=false;});
 for(const menu of [compactApp.menu,$('more-format')])menu.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();menu.open=false;menu.querySelector('summary').focus();}});
+// » opened by mouse leaves focus in the note, so Escape there closes the menu and keeps the caret.
+document.addEventListener('keydown',e=>{const more=$('more-format');if(e.key==='Escape'&&more.open&&!more.contains(document.activeElement)&&!document.querySelector('dialog[open]')){e.preventDefault();e.stopPropagation();more.open=false;}},true);
 
 
 // Enter can clone the preceding inline style despite the collapsed typing state.

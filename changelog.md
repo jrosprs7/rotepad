@@ -1,5 +1,18 @@
 # Rotepad changelog
 
+## 10/7/26 8:17 AM GMT+8 — Clear formatting usable from the browser » menu
+
+- **Clear formatting under » works with the mouse in the browser build.** Selecting text and then clicking » used to move focus and the selection out of the note, so Clear formatting disabled itself and could not be clicked (QA-2026-10-06 UX item).
+  - **Fix:** the » button now cancels its mousedown in Formatted view, as the toolbar format buttons already do. The menu still opens on click, and the selection and focus stay in the note. The change is in tools/responsive-toolbar.js and its embedded copy, kept in sync.
+- **Escape still closes » after a mouse open.** Because focus now stays in the note, a capture-phase Escape handler closes the open » menu and keeps the caret and selection. Keyboard opening (focused » and Enter) and Escape inside the menu are unchanged.
+- The same » behavior applies in the desktop app, which already had Remove formatting on its toolbar.
+- toolbar-smoke.cjs now selects with a real mouse double-click before using » (its earlier overflow check set the selection by script, which hid the bug). The README, architecture, testing guide, QA status and roadmap are updated.
+
+| Area / expected behavior | Current verification | Result / limits |
+| --- | --- | --- |
+| Clear formatting from » | Reproduction at 1400/700/420px: after » the selection was empty and the button disabled. toolbar-smoke.cjs now double-clicks a bold word at 1400/700/360px, opens » and clears only that word. It also covers Strikethrough from », a second click closing », Escape after a mouse open (menu closed, editor focused, selection kept), keyboard opening, and Markdown-view clearing. It fails on the previous commit and passes twice on the fix; the QA tester's BUG-8 check now passes with no other change in its results | Passed. |
+| Neighbors | All root tests; every browser smoke including scroll-position and data-safety; desktop storage, tabs, single-row, shell and print smokes; the editor suites with `--desktop` | Passed on the final source. No build or release; installed 0.12.1 still has the old » behavior. |
+
 ## 10/7/26 8:09 AM GMT+8 — Public 0.12.1 installer download
 
 - Published the [0.12.1 Windows testing release](https://github.com/jrosprs7/rotepad/releases/tag/v0.12.1) (pre-release) with Rotepad-0.12.1-Setup.exe, tagged on 15214d954f0956e689d66f683f7144ee3165b627.

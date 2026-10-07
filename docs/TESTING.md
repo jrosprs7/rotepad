@@ -76,7 +76,7 @@ node desktop/data-safety-smoke.cjs
 node desktop/scroll-position-smoke.cjs
 ```
 
-They cover formatted defaults and view switching, literal typing and opt-in conversion, tables and indentation, responsive toolbar selection, inline formatting reversal, numbered continuation and empty-item exits. Select scripts according to the changed behavior.
+They cover formatted defaults and view switching, literal typing and opt-in conversion, tables and indentation, responsive toolbar selection (including mouse-selected Clear formatting and Strikethrough from », Escape and keyboard opening), inline formatting reversal, numbered continuation and empty-item exits. Select scripts according to the changed behavior.
 
 numbering-smoke.cjs also covers Backspace at the start of nonempty numbered/bulleted items, preserved inline formatting and following numbers, middle-item removal, undo, nested outdent and view round trips.
 

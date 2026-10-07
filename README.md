@@ -15,7 +15,7 @@ The Windows app uses a borderless writing area, note tabs inside the title bar b
 
 Open notes appear as tabs in each window. Click a tab to switch, **+** or **Ctrl+N** to create a note, and a tab's **×** or **Ctrl+W** to close it while keeping it in Library. Double-click a tab (or right-click it) for note options and renaming. **Ctrl+Tab / Ctrl+Shift+Tab** cycles between open notes; a focused tab also supports arrow keys, Home/End and F2 for renaming. Long tab rows scroll horizontally. Closing the active tab selects the next tab, or the previous one at the end. Reopening a note from Library adds its tab at the end.
 
-The **Remove formatting** toolbar button (the T× icon) removes inline formatting from selected text, preserving paragraphs and lists. It supports Undo and works in Formatted and Markdown/Split views; it is unavailable in Preview or without a selection.
+The **Remove formatting** toolbar button (the T× icon) removes inline formatting from selected text, preserving paragraphs and lists. It supports Undo and works in Formatted and Markdown/Split views; it is unavailable in Preview or without a selection. In the browser version the same command is **Clear formatting** under »: select text first, then open » and choose it. Opening » keeps your selection, and Escape closes the menu.
 
 Formatted view is the default for fresh users. The footer switches between Formatted and Markdown; View also offers Split and Preview. Automatic Markdown conversion is optional and off by default. Formatting shortcuts, numbered lists, indentation, tables, text-only zoom, fonts and spellcheck are available.
 
