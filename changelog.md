@@ -1,5 +1,11 @@
 # Rotepad changelog
 
+## 10/7/26 8:43 PM GMT+8 — Public 0.12.2 installer download
+
+- Published the [0.12.2 Windows testing release](https://github.com/jrosprs7/rotepad/releases/tag/v0.12.2) (pre-release) with Rotepad-0.12.2-Setup.exe, tagged on dae63eb5bda6d8b1adf8fb024d7fdbb2da6fc684. The installer was built from 01226d3; the later commit only points the README download link at 0.12.2.
+- Verified that GitHub's asset digest matches the local installer (`3234cca73fde21984cbfa618d291a3f9d7075b0729a83da315f050fca89f844e`), and that the 107,294,705-byte download returns HTTP 200 without authentication and hashes identically. No app code or installer bytes changed.
+- Installation, upgrading, the Default apps page with Windows' picker, and desktop spellcheck remain tester checks; the release notes ask testers to report them.
+
 ## 10/7/26 8:22 PM GMT+8 — Windows build 0.12.2 (not published)
 
 - Set the desktop package version to 0.12.2 for the desktop right-click menu, the opt-in Default apps installer page and the browser » Clear formatting fix. Built Windows x64 NSIS and portable packages with `pnpm run dist` (pnpm 11.19.0 through corepack).
