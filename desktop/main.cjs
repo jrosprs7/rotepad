@@ -1,4 +1,4 @@
-const {app,BrowserWindow,ipcMain,dialog,shell,session}=require('electron');
+const {app,BrowserWindow,ipcMain,dialog,shell,session,Menu,clipboard}=require('electron');
 const fs=require('node:fs/promises'),path=require('node:path');
 const {pathToFileURL}=require('node:url'),{randomUUID}=require('node:crypto');
 const {MarkdownStore}=require('./markdown-store.cjs');
@@ -19,6 +19,21 @@ function storeLinks(){const operation=linksQueue.catch(()=>{}).then(()=>atomicWr
 async function openedFile(state,file){const text=await fs.readFile(file,'utf8'),token=randomUUID();state.pending.set(token,file);const existingIds=new Set(Object.keys(links).filter(id=>links[id].toLowerCase()===file.toLowerCase()));for(const [id,record] of Object.entries(markdownStore?.records||{}))if(record.file.toLowerCase()===file.toLowerCase())existingIds.add(id);return {name:path.basename(file),text,token,existingIds:[...existingIds]};}
 async function sendQueued(state){if(!state.ready||state.closePending)return;for(const file of state.paths.splice(0))try{state.win.webContents.send('opened-note',await openedFile(state,file));}catch(error){dialog.showErrorBox('Could not open note',error.message);}}
 function external(url){try{if(['https:','http:'].includes(new URL(url).protocol))void shell.openExternal(url);}catch{}}
+// Electron shows no right-click menu by default. Offer spelling fixes, editing commands and http(s) link actions.
+// Undo/Redo send the app's own shortcuts so its history stays authoritative; Paste already inserts plain text.
+function shortcut(win,keyCode){for(const type of ['keyDown','keyUp'])win.webContents.sendInputEvent({type,keyCode,modifiers:['control']});}
+function showContextMenu(win,params){
+ const items=[],flags=params.editFlags,link=/^https?:/i.test(params.linkURL||'')?params.linkURL:'';
+ if(params.isEditable&&params.misspelledWord){
+  for(const word of params.dictionarySuggestions.slice(0,5))items.push({label:word,click:()=>win.webContents.replaceMisspelling(word)});
+  if(!params.dictionarySuggestions.length)items.push({label:'No spelling suggestions',enabled:false});
+  items.push({label:'Add to dictionary',click:()=>win.webContents.session.addWordToSpellCheckerDictionary(params.misspelledWord)},{type:'separator'});
+ }
+ if(params.isEditable)items.push({label:'Undo',click:()=>shortcut(win,'Z')},{label:'Redo',click:()=>shortcut(win,'Y')},{type:'separator'},{role:'cut',enabled:flags.canCut},{role:'copy',enabled:flags.canCopy},{role:'paste',enabled:flags.canPaste},{type:'separator'},{role:'selectAll'});
+ else if(params.selectionText.trim())items.push({role:'copy'});
+ if(link)items.push(...(items.length?[{type:'separator'}]:[]),{label:'Open link',click:()=>external(link)},{label:'Copy link address',click:()=>clipboard.writeText(link)});
+ if(items.length)Menu.buildFromTemplate(items).popup({window:win});
+}
 function broadcast(channel,value,except){for(const state of windows.values())if(state!==except&&state.ready&&!state.win.isDestroyed())state.win.webContents.send(channel,value);}
 async function createWindow(paths=[],initial=false){
  let slot=1;while([...windows.values()].some(s=>s.slot===slot))slot++;
@@ -29,6 +44,7 @@ async function createWindow(paths=[],initial=false){
  win.on('close',event=>{if(state.allowClose)return;event.preventDefault();if(!state.ready||state.closePending||state.pickerBusy||state.printBusy||busy.size)return;state.closePending=true;win.webContents.send('request-close');});
  win.on('closed',()=>windows.delete(id));
  win.webContents.setWindowOpenHandler(({url})=>{external(url);return {action:'deny'};});
+ win.webContents.on('context-menu',(event,params)=>showContextMenu(win,params));
  win.webContents.on('will-navigate',(event,url)=>{if(url!==appURL){event.preventDefault();external(url);}});
  win.webContents.on('will-attach-webview',event=>event.preventDefault());
  await win.loadURL(appURL);win.show();return state;

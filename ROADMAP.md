@@ -25,6 +25,7 @@ Use disposable notes, isolated profiles and test files.
 
 - [ ] Verify fresh Windows installation/upgrades, default-app selection, native Save/Open dialogs, cancellation and failed writes.
 - [ ] Verify physical printing, links, closing/reopening and prolonged desktop use.
+- [ ] Check whether desktop spellcheck underlines misspelled words in the installed app. In development Electron (2026-10-07) it reported no misspellings, raised no dictionary events and created no Dictionaries folder, so right-click spelling suggestions may never appear. If so, investigate Windows spellchecker versus Hunspell dictionary setup, keeping offline use in mind.
 - [ ] Broaden interactive checks for bullets, checkboxes, nested lists, lists inside quotes and middle-of-list exits.
 - [ ] Verify heading/quote transitions, Shift+Enter, blank blocks, toolbar selection, mixed formatting, clipboard paste and clear formatting.
 - [ ] Verify undo after typing, paste, formatting, list/quote exit and history restore.

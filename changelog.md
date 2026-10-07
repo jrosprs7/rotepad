@@ -1,5 +1,35 @@
 # Rotepad changelog
 
+## 10/7/26 8:01 PM GMT+8 — Opt-in default apps during installation
+
+- At the user's request, the installer now has a **Default apps** page after the folder choice, with two opt-in boxes (both unticked): **Markdown files (.md)** and **Text files (.txt)**.
+- For each ticked type, the install step calls `SHOpenWithDialog` with `OAIF_REGISTER_EXT|OAIF_FORCE_REGISTRATION`. This is Windows' own "How do you want to open…" picker with "Always" pre-ticked; it opens no file. The user's choice in the picker records the default.
+  - Windows 10/11 protects default-app choices (UserChoice) from installers, so the installer still never writes them itself.
+  - Silent installs skip the picker. The flag values come from the Windows SDK's ShlObj_core.h.
+- Replaced the finish page's unticked "Choose Rotepad for .md and .txt in Windows Settings" shortcut with this page; Rotepad Settings keeps its Windows Settings button. Updated the README, desktop guide and testing guide.
+
+| Area / expected behavior | Current verification | Result / limits |
+| --- | --- | --- |
+| Installer compiles with the page | electron-builder NSIS build into a scratch output folder (the published dist files were left untouched) | Passed with no NSIS warnings. Not a release build. |
+| Picker call | Silent NSIS check compiled with the same makensis: the OPENASINFO it builds reads back as the temp `.md` path, a null class and flags 0xA, and `SHOpenWithDialog` resolves in shell32. No dialog was shown | Passed. |
+| Real installation | Not run: installing changes Program Files and the registry, and the picker is native Windows UI | **Manual test needed:** page shown, picker per ticked type, Always makes double-click open Rotepad, cancel still finishes, and an unticked install shows no picker. If a different administrator account approves installation, the choice applies to that account. |
+
+## 10/7/26 8:33 AM GMT+8 — Desktop right-click menu
+
+- Right-clicking note text in the desktop app showed nothing, because Electron has no default context menu (reported by the user). The browser build was unaffected; it uses the browser's own menu.
+- main.cjs now builds a native menu from each window's `context-menu` event. No IPC is involved.
+  - **Editable text:** Undo and Redo (sent as Ctrl+Z/Ctrl+Y to the app's own history), Cut, Copy, Paste (through the existing plain-text paste handler) and Select All. Cut and Copy are disabled without a selection.
+  - **Misspelled words:** up to five suggestions or "No spelling suggestions", plus Add to dictionary, whenever Chromium reports a misspelling.
+  - **http(s) links:** Open link (through the existing safe external opener) and Copy link address.
+  - **Elsewhere:** Copy for a non-editable selection. Tabs keep their note-options right-click, and plain chrome shows no menu.
+- Added desktop/context-menu-smoke.cjs (12 checks) and updated the README, architecture and testing guide.
+
+| Area / expected behavior | Current verification | Result / limits |
+| --- | --- | --- |
+| Right-click menu | context-menu-smoke.cjs in isolated development Electron with real right-clicks and popups captured in the main process. It checks item lists and enabled states, and that Copy/Cut/Undo/Redo/Paste/Select All change the note and clipboard as expected. It also covers link copy and open (open mocked), the Markdown view, tab note options and plain chrome. Against the previous main.cjs, right-clicking text produced no menu | Passed twice. Native menu rendering and mouse selection inside the real menu are not automatable. The system clipboard text is saved and restored around the test. |
+| Spelling suggestions | The menu layout is checked with a supplied misspelling event. In development Electron the spellchecker raised no initialization or dictionary events and reported no misspelled words (en-US enabled), and no Dictionaries folder exists in the test or normal profile (folder names only were listed) | **Open question:** whether the desktop spellchecker underlines words at all on this machine. Suggestions appear only when it does. |
+| Neighbors | All root and browser smokes; desktop storage, multi-window, tabs, shell, layout, print, reveal and smoke.cjs; the editor suites with `--desktop` | Passed. No build or release; installed 0.12.1 has no right-click menu. |
+
 ## 10/7/26 8:17 AM GMT+8 — Clear formatting usable from the browser » menu
 
 - **Clear formatting under » works with the mouse in the browser build.** Selecting text and then clicking » used to move focus and the selection out of the note, so Clear formatting disabled itself and could not be clicked (QA-2026-10-06 UX item).

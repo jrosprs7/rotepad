@@ -41,13 +41,15 @@ Open multiple desktop windows with **Menu → File → New window**, **Ctrl+Shif
 
 Import Markdown creates a managed copy; Export Markdown creates an additional copy. Opening an existing managed file reuses its note. The default notes folder is Documents/Rotepad Docs unless changed in Settings; changing it does not relocate existing notes.
 
-The Windows installer registers Rotepad for `.md`, `.markdown` and `.txt`. On its final page, select **Choose Rotepad for .md and .txt in Windows Settings**, then confirm the desired file defaults in Windows. This is also available later in Rotepad's Settings. Opening an external text file creates a managed Markdown copy, following the same import behavior as external Markdown files.
+The Windows installer registers Rotepad for `.md`, `.markdown` and `.txt`. Its **Default apps** page, shown after you choose the folder, offers two boxes, both unticked: **Markdown files (.md)** and **Text files (.txt)**. For each box you tick, Windows shows its own "How do you want to open…" window after installation. Choose Rotepad there and confirm; Windows only lets you, not the installer, change a default app. You can also do this later from Rotepad's Settings, which opens Windows Settings. Opening an external text file creates a managed Markdown copy, following the same import behavior as external Markdown files.
 
 **Menu → Help → About Rotepad** shows the installed version and **© 2026, J.E. Rosaroso**.
 
 Desktop Ctrl+P opens print preview with paper size, orientation and PDF export. Physical printer output still needs manual verification.
 
 Tab inserts a tab at the text cursor (displayed with four-column tab stops). With multiple lines selected it indents them; in a list it nests the item. Shift+Tab decreases indentation. Tables retain Tab/Shift+Tab cell navigation. These editor shortcuts work in Formatted and Markdown/Split views; ordinary dialog and toolbar controls retain focus navigation.
+
+Right-click in the desktop app's text for Undo, Redo, Cut, Copy, Paste and Select All. Right-click a link to open or copy it, and a word marked as misspelled for spelling suggestions or Add to dictionary. Right-clicking a tab still opens its note options. The browser version uses the browser's own right-click menu.
 
 ## Data and portability
 

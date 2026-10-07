@@ -116,6 +116,7 @@ node desktop/markdown-files-smoke.cjs
 node desktop/multi-window-smoke.cjs
 node desktop/note-tabs-smoke.cjs
 node desktop/shell-ui-smoke.cjs
+node desktop/context-menu-smoke.cjs
 ```
 
 | Script in desktop/ | Main area |
@@ -129,13 +130,20 @@ node desktop/shell-ui-smoke.cjs
 | note-tabs-smoke.cjs | Tab creation/switching/closing/reopening/renaming/restart, keyboard/caret, multi-window tab isolation, formatting-button selection/Undo, failed-close recovery and compact light/dark layout |
 | shell-ui-smoke.cjs | Windows title-bar safe area, themes/resize/Focus and window-state changes, About version/copyright, mocked default-app action, invalid-theme rejection and TXT startup/second-window opening |
 | print-preview-smoke.cjs | Preview, PDF export, mocked printing, errors and empty-workspace guard |
+| context-menu-smoke.cjs | Right-click menu on note text: items and enabled states; Copy/Cut/Paste/Undo/Redo/Select All acting on the note; link open (mocked) and copy; Markdown view; tabs keep note options; plain chrome shows none. Spelling layout uses a supplied misspelling event because the spellchecker reported none in development Electron. Native menus are captured in the main process, not clicked. The system clipboard is used, and its text is saved and restored |
 | close-smoke.cjs | Delegates to library-smoke.cjs; does not need a duplicate run |
 
 Storage changes should include both library-smoke.cjs and markdown-files-smoke.cjs. Printing and layout changes need the corresponding desktop checks.
 
 note-tabs-smoke.cjs checks the 34px tab strip above the 38px toolbar, long-title overflow and selected-tab visibility at 650/850/1250px, plus Focus/print hiding and an empty workspace. Focus retains the Windows native title-bar area while hiding its tabs. It writes screenshots into its disposable profile for visual inspection. It uses actual mouse/keyboard controls for tabs and the existing Remove formatting button; source/rich selection fixtures verify partial clearing and Undo. An injected metadata-write failure must leave the tab and its text available until retry succeeds. tab-smoke.cjs continues to cover text indentation; in desktop, Ctrl+Tab is now note navigation (covered by note-tabs-smoke.cjs), and ordinary UI focus navigation starts from the new-note button instead of the hidden title field.
 
-shell-ui-smoke.cjs is Windows-only and resizes actual BrowserWindows to check the Window Controls Overlay safe area. It invokes maximize/minimize/restore through Electron, exercises menu and tab controls, and mocks shell.openExternal so Windows Settings is not opened. Native dragging, Snap layouts, caption-button mouse targets, Windows scaling/multiple monitors, installation/uninstall and real default-app selection remain manual checks. Compile the NSIS installer when installer.nsh changes and review registration/unregistration for quoted paths, preserved existing defaults and application-owned keys; compilation does not verify the Windows registry outcome.
+shell-ui-smoke.cjs is Windows-only and resizes actual BrowserWindows to check the Window Controls Overlay safe area. It invokes maximize/minimize/restore through Electron, exercises menu and tab controls, and mocks shell.openExternal so Windows Settings is not opened. Native dragging, Snap layouts, caption-button mouse targets, Windows scaling/multiple monitors, installation/uninstall and real default-app selection remain manual checks. Compile the NSIS installer when installer.nsh changes and review registration/unregistration for quoted paths, preserved existing defaults and application-owned keys; compilation does not verify the Windows registry outcome. The Default apps page and Windows' picker need a manual installation test:
+- Leave both boxes unticked: no picker appears.
+- Tick one or both: the picker appears for each ticked type with Rotepad listed; choosing it with Always makes double-clicked files open in Rotepad.
+- Cancel the picker: installation still finishes.
+- Run a silent install (`/S`): no picker appears.
+
+The OPENASINFO marshaling can be checked without any dialog by compiling a small silent NSIS script that builds and reads back the same structure.
 
 Font checks also cover both removed Iosevka choices in older saved workspaces, fallback to Fixed Extended, retained zoom and a standard font choice surviving reload. Embedded font payloads must remain intact.
 
