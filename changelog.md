@@ -1,5 +1,18 @@
 # Rotepad changelog
 
+## 10/7/26 12:21 AM GMT+8 — Keep the view when formatting from menus
+
+- **Formatting from the » menu no longer jumps to the top.** Applying Strikethrough, Highlight, Inline code, Bullet/Numbered/Checkbox list, Increase indent, Horizontal divider or Insert date used to scroll the note back to line 1 (reported by the user). Formatting was still applied to the selection, but off-screen.
+  - **Cause:** these commands run after focus has moved to the menu. restoreRange() refocused the editor with a plain `focus()`, which made the browser move the caret to the top and scroll there before the saved selection was restored.
+  - **Fix:** restoreRange() now uses `focus({preventScroll:true})`. Toolbar Bold/Italic/Underline, shortcuts, Quote and the paragraph-style menu were unaffected because they keep focus in the editor.
+- **The Outline scrolls on the first click.** Clicking a heading in Formatted view now scrolls on the first click; the same plain focus used to undo its scroll (QA-2026-10-06 Outline item).
+- Added desktop/scroll-position-smoke.cjs (15 checks); updated the testing guide, architecture, QA status and roadmap.
+
+| Area / expected behavior | Current verification | Result / limits |
+| --- | --- | --- |
+| View and selection kept when formatting | Reproduction on a 120-line note with a double-click selection at line 80: every » command jumped to 0 in Edge and Electron, while Bold/Ctrl+B/Quote/paragraph style did not. The new scroll-position-smoke.cjs fails on the previous commit and passes in Edge (3 runs) and `--desktop`, including the link and table dialogs, Undo and the Outline | Passed. Clear formatting in the browser build is still unreachable from » (separate open QA finding); the desktop toolbar button keeps the view. |
+| Neighbors | All root tests; every browser smoke; desktop storage, tabs, shell, layout and print smokes; the editor suites with `--desktop` | Passed on the final source. No build or release; the installed 0.12.0 still has the jump. |
+
 ## 10/6/26 10:26 AM GMT+8 — Public 0.12.0 installer download
 
 - Published the [0.12.0 Windows testing release](https://github.com/jrosprs7/rotepad/releases/tag/v0.12.0) (pre-release) with Rotepad-0.12.0-Setup.exe. The tag is on c400f310a8cdfb3d2962c4f88652cb1a0637ccaf; the installer was built from 58f48b6, and the later commit only points the README download link at 0.12.0.

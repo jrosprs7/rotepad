@@ -15,7 +15,7 @@ These findings remain unresolved in the documentation. Reproduce against the cur
 - [ ] Creating a note while viewing Trash should switch the sidebar to Open/Library.
 - [ ] Review combined bold/italic parsing and consecutive formatting shortcuts separately from fonts. The existing parser leaves literal asterisks in `***text***`; consecutive Ctrl+B/Ctrl+I scenarios during font checks also did not retain both styles and need an isolated interaction review. The combined font face itself loads and renders correctly.
 
-- [ ] Triage the remaining [2026-10-06 exploratory QA findings](docs/QA-2026-10-06.md). Its data-loss items (D1–D7) and the `#`/`~~` and file-name link changes (F1–F2) are fixed. Next: format changes on reload (F3–F12), Clear formatting reachable by mouse, caret after list commands and Undo, Outline scrolling, large-paste performance, and backup/Trash/keyboard issues.
+- [ ] Triage the remaining [2026-10-06 exploratory QA findings](docs/QA-2026-10-06.md). Its data-loss items (D1–D7) and the `#`/`~~` and file-name link changes (F1–F2) are fixed. Next: format changes on reload (F3–F12), Clear formatting reachable by mouse, caret after list commands and Undo, Markdown-view Outline scrolling with wrapped lines, large-paste performance, and backup/Trash/keyboard issues.
 
 Original reproductions are in the [0.5.1 QA report](docs/archive/QA-0.5.1.md). Its closed-note printing issue was resolved for desktop in 0.7.0 and is recorded in the changelog.
 

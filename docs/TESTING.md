@@ -73,6 +73,7 @@ node desktop/font-smoke.cjs
 node desktop/quote-literal-smoke.cjs
 node desktop/bullet-literal-smoke.cjs
 node desktop/data-safety-smoke.cjs
+node desktop/scroll-position-smoke.cjs
 ```
 
 They cover formatted defaults and view switching, literal typing and opt-in conversion, tables and indentation, responsive toolbar selection, inline formatting reversal, numbered continuation and empty-item exits. Select scripts according to the changed behavior.
@@ -99,6 +100,8 @@ data-safety-smoke.cjs covers the fixed data-loss findings from the [2026-10-06 Q
 - Saving: Clear formatting and Replace all never write empty markers; multiline paste into a blank note keeps every line; literal `#` and `~~` survive; file names are not auto-linked while web addresses are; reload.
 
 Add `--desktop` to also check the managed Markdown file.
+
+scroll-position-smoke.cjs selects a word far down a long note by double-click, then applies each » command: Strikethrough, Highlight, Inline code, list types, indent, divider and date. It also covers the link and table dialogs, Undo, and the Bold and Quote buttons. It asserts that the view does not move and that the formatting lands on the selected word. It also checks that the Outline scrolls to a far heading on the first click in Formatted view. Add `--desktop` for isolated development Electron.
 
 bullet-literal-smoke.cjs checks that typed and pasted `- `, `* ` and `+ ` prefixes stay plain text with auto-Markdown off/on: space and Enter, middle split and caret, ordinary Backspace, empty marker lines, Undo/Redo, tabs, soft breaks, multiline paste after a paragraph, escapes (`\-`, `\+`, `\*`), views and reload. It also confirms unchanged neighbors: mid-line and repeated hyphens, typed numbered lists, typed headings with auto-Markdown on, the Bullet list command, Markdown-view bullets and continuation, and existing Markdown bullets. Add `--desktop` after preparation to also check the managed Markdown file in an isolated profile.
 
