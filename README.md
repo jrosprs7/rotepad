@@ -2,12 +2,12 @@
 
 Rotepad is an offline writing application with formatted editing, Markdown source, a note library, search, history and backups. The same shared editor supports a standalone browser file and a Windows desktop application.
 
-The desktop package version is **0.12.0**, as declared in [desktop/package.json](desktop/package.json). Windows builds are unsigned previews. macOS/Linux packaging and phone sync remain planned.
+The desktop package version is **0.12.1**, as declared in [desktop/package.json](desktop/package.json). Windows builds are unsigned previews. macOS/Linux packaging and phone sync remain planned.
 
 ## Open Rotepad
 
 - **Browser:** open [Rotepad.html](Rotepad.html) in a browser. No server or build is required. Browser notes are stored separately from desktop notes.
-- **Windows:** [download the 0.12.0 installer](https://github.com/jrosprs7/rotepad/releases/download/v0.12.0/Rotepad-0.12.0-Setup.exe), or visit the [testing release](https://github.com/jrosprs7/rotepad/releases/tag/v0.12.0) for details. This is an unsigned Windows x64 preview. For building locally, see the [desktop guide](desktop/README.md).
+- **Windows:** [download the 0.12.1 installer](https://github.com/jrosprs7/rotepad/releases/download/v0.12.1/Rotepad-0.12.1-Setup.exe), or visit the [testing release](https://github.com/jrosprs7/rotepad/releases/tag/v0.12.1) for details. This is an unsigned Windows x64 preview. For building locally, see the [desktop guide](desktop/README.md).
 
 ## Writing and notes
 

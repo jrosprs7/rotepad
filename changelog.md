@@ -1,5 +1,15 @@
 # Rotepad changelog
 
+## 10/7/26 8:05 AM GMT+8 — Windows build 0.12.1
+
+- Set the desktop package version to 0.12.1 for the » menu scroll fix and Outline first-click fix. Built Windows x64 NSIS and portable packages with `pnpm run dist` (pnpm 11.19.0 through corepack). Pointed the README download link at the 0.12.1 release.
+- Rotepad-0.12.1-Setup.exe is 107,293,084 bytes, SHA-256 `6076070e43525f8f42cba39df06e76dcf7e20b429f1b45c4ec74050c6a49aa25`. Rotepad-0.12.1-Windows.exe is 107,050,803 bytes, SHA-256 `2b860f8f297390511757cd10b087787c8ec27989a7bae14327a275fa78d28b52`. Executables remain excluded from Git.
+
+| Area / expected behavior | Current verification | Result / limits |
+| --- | --- | --- |
+| Packaged payload | Extracted app.asar: version 0.12.1. main.cjs, preload.cjs, library-merge.cjs, markdown-store.cjs and the prepared Rotepad.html are byte-identical to the tested sources and contain both preventScroll fixes. shell-ui-smoke.cjs checks About/version after the bump | Passed. The full suites ran on this source before the version-only change. |
+| Installation | Not run | Installing, upgrading from 0.12.0/0.11.0 and running the packaged executable remain manual tester checks. Unsigned build. |
+
 ## 10/7/26 12:21 AM GMT+8 — Keep the view when formatting from menus
 
 - **Formatting from the » menu no longer jumps to the top.** Applying Strikethrough, Highlight, Inline code, Bullet/Numbered/Checkbox list, Increase indent, Horizontal divider or Insert date used to scroll the note back to line 1 (reported by the user). Formatting was still applied to the selection, but off-screen.
