@@ -1,5 +1,10 @@
 # Rotepad changelog
 
+## 10/7/26 8:09 AM GMT+8 — Public 0.12.1 installer download
+
+- Published the [0.12.1 Windows testing release](https://github.com/jrosprs7/rotepad/releases/tag/v0.12.1) (pre-release) with Rotepad-0.12.1-Setup.exe, tagged on 15214d954f0956e689d66f683f7144ee3165b627.
+- Verified that GitHub's asset digest matches the local installer (`6076070e43525f8f42cba39df06e76dcf7e20b429f1b45c4ec74050c6a49aa25`), and that the 107,293,084-byte download returns HTTP 200 without authentication and hashes identically. No app code or installer bytes changed. Installing and upgrading remain tester tasks.
+
 ## 10/7/26 8:05 AM GMT+8 — Windows build 0.12.1
 
 - Set the desktop package version to 0.12.1 for the » menu scroll fix and Outline first-click fix. Built Windows x64 NSIS and portable packages with `pnpm run dist` (pnpm 11.19.0 through corepack). Pointed the README download link at the 0.12.1 release.
