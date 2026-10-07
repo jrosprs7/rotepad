@@ -1,5 +1,17 @@
 # Rotepad changelog
 
+## 10/7/26 8:22 PM GMT+8 — Windows build 0.12.2 (not published)
+
+- Set the desktop package version to 0.12.2 for the desktop right-click menu, the opt-in Default apps installer page and the browser » Clear formatting fix. Built Windows x64 NSIS and portable packages with `pnpm run dist` (pnpm 11.19.0 through corepack).
+- The README download link still points at the published 0.12.1 release; no GitHub release was created.
+- Rotepad-0.12.2-Setup.exe is 107,294,705 bytes, SHA-256 `3234cca73fde21984cbfa618d291a3f9d7075b0729a83da315f050fca89f844e`. Rotepad-0.12.2-Windows.exe is 107,051,976 bytes, SHA-256 `3a8dd4052e96a2f399d78a19f89a0fb1ed9eb65ec4bff935d9dfaeb66fae7b29`. Executables remain excluded from Git.
+- The 118 MB size of the earlier installer-only test build came from building that target alone; the standard two-target build is the usual size.
+
+| Area / expected behavior | Current verification | Result / limits |
+| --- | --- | --- |
+| Packaged payload | Extracted app.asar: version 0.12.2. main.cjs, preload.cjs, library-merge.cjs, markdown-store.cjs and the prepared Rotepad.html are byte-identical to the tested sources. They contain the context-menu handler, the » mousedown fix and the preventScroll fixes. shell-ui-smoke.cjs (About/version) and context-menu-smoke.cjs passed after the bump | Passed. The full suites ran on this source before the version-only change. |
+| Installation and Default apps page | Not run | **Manual test needed:** install or upgrade, the Default apps page, Windows' picker for each ticked type, Always making double-click open Rotepad, and cancel or unticked behavior. Unsigned build. |
+
 ## 10/7/26 8:01 PM GMT+8 — Opt-in default apps during installation
 
 - At the user's request, the installer now has a **Default apps** page after the folder choice, with two opt-in boxes (both unticked): **Markdown files (.md)** and **Text files (.txt)**.
