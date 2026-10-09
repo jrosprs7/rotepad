@@ -1,11 +1,13 @@
 const {app,BrowserWindow,ipcMain,dialog,shell,session,Menu,clipboard}=require('electron');
 const fs=require('node:fs/promises'),path=require('node:path');
-const {pathToFileURL}=require('node:url'),{randomUUID}=require('node:crypto');
+const {pathToFileURL}=require('node:url'),{randomUUID,createHash}=require('node:crypto');
 const {MarkdownStore}=require('./markdown-store.cjs');
 const {mergeDesktopLibrary}=require('./library-merge.cjs');
 const windows=new Map(),busy=new Set();
 let links=Object.create(null),linksPath,settingsPath,saveFolder,libraryPath,libraryData=null,markdownStore;
 let libraryQueue=Promise.resolve(),linksQueue=Promise.resolve(),startupPaths=[];
+// Files the user opened stay linked to their note: saves write back there (exports in `links` are separate copies).
+let synced=Object.create(null),syncedPath,syncedQueue=Promise.resolve();const syncing=new Map();
 const appURL=pathToFileURL(path.join(__dirname,'app','Rotepad.html')).href;
 const requestedPaths=args=>args.filter(arg=>typeof arg==='string'&&!arg.startsWith('-')&&/\.(md|markdown|txt)$/i.test(arg)).map(file=>path.resolve(file));
 startupPaths.push(...requestedPaths(process.argv.slice(app.isPackaged?1:2)));
@@ -16,7 +18,11 @@ function validateLibrary(text){const data=JSON.parse(text);if(data?.version!==2|
 function check(event){const state=windows.get(event.sender.id);if(!state||event.senderFrame!==state.win.webContents.mainFrame||event.senderFrame.url!==appURL)throw Error('Untrusted window');return state;}
 async function atomicWrite(file,text){const temporary=path.join(path.dirname(file),'.'+path.basename(file)+'.'+randomUUID()+'.tmp');try{await fs.writeFile(temporary,text,{encoding:'utf8',flag:'wx'});await fs.rename(temporary,file);}finally{await fs.unlink(temporary).catch(()=>{});}}
 function storeLinks(){const operation=linksQueue.catch(()=>{}).then(()=>atomicWrite(linksPath,JSON.stringify(links)));linksQueue=operation;return operation;}
-async function openedFile(state,file){const text=await fs.readFile(file,'utf8'),token=randomUUID();state.pending.set(token,file);const existingIds=new Set(Object.keys(links).filter(id=>links[id].toLowerCase()===file.toLowerCase()));for(const [id,record] of Object.entries(markdownStore?.records||{}))if(record.file.toLowerCase()===file.toLowerCase())existingIds.add(id);return {name:path.basename(file),text,token,existingIds:[...existingIds]};}
+const digest=buffer=>createHash('sha256').update(buffer).digest('hex');
+function storeSynced(){const operation=syncedQueue.catch(()=>{}).then(()=>atomicWrite(syncedPath,JSON.stringify(synced)));syncedQueue=operation;return operation;}
+// Only valid UTF-8 can be written back without corrupting the original; keep its BOM and line endings.
+function fileFormat(file,buffer){let utf8=true;try{new TextDecoder('utf-8',{fatal:true}).decode(buffer);}catch{utf8=false;}const bom=buffer[0]===0xef&&buffer[1]===0xbb&&buffer[2]===0xbf;return {file,kind:/\.txt$/i.test(file)?'txt':'md',utf8,bom,eol:buffer.includes('\r\n')?'\r\n':'\n',hash:digest(buffer)};}
+async function openedFile(state,file){const buffer=await fs.readFile(file),text=buffer.toString('utf8'),token=randomUUID(),format=fileFormat(file,buffer);state.pending.set(token,format);const existingIds=new Set(Object.keys(links).filter(id=>links[id].toLowerCase()===file.toLowerCase()));for(const [id,record] of Object.entries(markdownStore?.records||{}))if(record.file.toLowerCase()===file.toLowerCase())existingIds.add(id);for(const [id,entry] of Object.entries(synced))if(entry.file.toLowerCase()===file.toLowerCase())existingIds.add(id);return {name:path.basename(file),text,token,kind:format.kind,writable:format.utf8,existingIds:[...existingIds]};}
 async function sendQueued(state){if(!state.ready||state.closePending)return;for(const file of state.paths.splice(0))try{state.win.webContents.send('opened-note',await openedFile(state,file));}catch(error){dialog.showErrorBox('Could not open note',error.message);}}
 function external(url){try{if(['https:','http:'].includes(new URL(url).protocol))void shell.openExternal(url);}catch{}}
 // Electron shows no right-click menu by default. Offer spelling fixes, editing commands and http(s) link actions.
@@ -57,6 +63,8 @@ else app.whenReady().then(async()=>{
  saveFolder=!app.isPackaged&&process.env.ROTEPAD_TEST_DATA?path.join(app.getPath('userData'),'Documents','Rotepad Docs'):path.join(app.getPath('documents'),'Rotepad Docs');
  try{const settings=JSON.parse(await fs.readFile(settingsPath,'utf8'));if(typeof settings.saveFolder==='string'&&path.isAbsolute(settings.saveFolder))saveFolder=settings.saveFolder;}catch{}
  try{for(const [id,file] of Object.entries(JSON.parse(await fs.readFile(linksPath,'utf8'))))if(typeof file==='string'&&path.isAbsolute(file))links[id]=file;}catch{}
+ syncedPath=path.join(app.getPath('userData'),'linked-files.json');
+ try{for(const [id,entry] of Object.entries(JSON.parse(await fs.readFile(syncedPath,'utf8'))))if(typeof entry?.file==='string'&&path.isAbsolute(entry.file)&&['md','txt'].includes(entry.kind)&&['\n','\r\n'].includes(entry.eol)&&typeof entry.hash==='string')synced[id]={file:entry.file,kind:entry.kind,bom:entry.bom===true,eol:entry.eol,hash:entry.hash};}catch{}
  markdownStore=new MarkdownStore(path.join(app.getPath('userData'),'managed-notes.json'),atomicWrite);
  try{await markdownStore.load();if(libraryData){const data=validateLibrary(libraryData);await fs.writeFile(path.join(app.getPath('userData'),'library-before-markdown.json'),libraryData,{flag:'wx'}).catch(error=>{if(error.code!=='EEXIST')throw error;});libraryData=JSON.stringify(await markdownStore.hydrate(data));}}catch(error){dialog.showErrorBox('Could not load note files',error.message);app.quit();return;}
  session.defaultSession.setPermissionRequestHandler((_webContents,_permission,callback)=>callback(false));
@@ -102,7 +110,23 @@ else app.whenReady().then(async()=>{
   }finally{busy.delete(data.id);}
  });
  ipcMain.handle('note-open',async event=>{const state=check(event);if(state.pickerBusy)return null;state.pickerBusy=true;try{const result=await dialog.showOpenDialog(state.win,{title:'Open note',defaultPath:saveFolder,properties:['openFile'],filters});if(result.canceled)return null;return await openedFile(state,result.filePaths[0]);}finally{state.pickerBusy=false;}});
- ipcMain.handle('note-bind',async(event,data)=>{const state=check(event);if(typeof data?.id!=='string'||!state.pending.has(data.token))throw Error('Invalid opened note');links[data.id]=state.pending.get(data.token);state.pending.delete(data.token);await storeLinks();});
+ ipcMain.handle('note-bind',async(event,data)=>{const state=check(event);if(typeof data?.id!=='string'||!state.pending.has(data.token))throw Error('Invalid opened note');const format=state.pending.get(data.token);state.pending.delete(data.token);links[data.id]=format.file;await storeLinks();
+  // Reopening a linked note keeps the last known disk version, so outside edits since then are still detected.
+  if(format.utf8){const previous=synced[data.id];synced[data.id]={file:format.file,kind:format.kind,bom:format.bom,eol:format.eol,hash:previous?.file.toLowerCase()===format.file.toLowerCase()?previous.hash:format.hash};}else delete synced[data.id];
+  await storeSynced();return {linked:format.utf8,kind:format.kind,name:path.basename(format.file)};});
+ ipcMain.handle('linked-files',event=>{check(event);return Object.entries(synced).map(([id,entry])=>({id,kind:entry.kind,name:path.basename(entry.file)}));});
+ // Write a note back to the file it was opened from. Never recreate a missing file or overwrite outside changes unless forced.
+ ipcMain.handle('note-sync',async(event,data)=>{check(event);if(typeof data?.id!=='string'||typeof data.text!=='string')throw Error('Invalid note');const entry=synced[data.id];if(!entry)return {status:'unlinked'};
+  const run=(syncing.get(entry.file)||Promise.resolve()).catch(()=>{}).then(async()=>{
+   let current;try{current=await fs.readFile(entry.file);}catch(error){if(error.code==='ENOENT')return {status:'missing'};throw error;}
+   if(digest(current)!==entry.hash&&data.force!==true)return {status:'changed'};
+   const output=Buffer.from((entry.bom?'﻿':'')+data.text.replace(/\r\n?/g,'\n').replace(/\n/g,entry.eol),'utf8');
+   if(!output.equals(current))await atomicWrite(entry.file,output);
+   entry.hash=digest(output);await storeSynced();return {status:'saved'};
+  });
+  syncing.set(entry.file,run);return run;
+ });
+ ipcMain.handle('note-unlink',async(event,id)=>{check(event);if(typeof id!=='string')throw Error('Invalid note');delete synced[id];await storeSynced();});
  await createWindow(startupPaths.splice(0),true);
 });
 app.on('second-instance',(_event,args)=>{const paths=requestedPaths(args.slice(app.isPackaged?1:2));if(!markdownStore)startupPaths.push(...paths);else void createWindow(paths);});

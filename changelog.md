@@ -1,5 +1,27 @@
 # Rotepad changelog
 
+## 10/9/26 1:40 PM GMT+8 — Save back to opened .txt and .md files
+
+- **Opened files are now saved back.** The user created a `.txt`, opened it in Rotepad, edited and saved, and the file did not change. Opening a file imported it as a managed copy in Rotepad Docs, and autosave/Ctrl+S only ever wrote that copy. Now a note opened from a file stays linked to it, and every library save (autosave, Ctrl+S, close) also writes the note back to the original. Rotepad keeps its library copy for history and recovery.
+- **Main process:** a new linked-files.json and `note-sync`/`note-unlink`/`linked-files` IPC.
+  - It writes only to files the user opened, never to a path the renderer chooses, and it serializes writes per file and writes atomically.
+  - It never recreates a missing file.
+  - It refuses to overwrite a file whose SHA-256 differs from the last version Rotepad read or wrote; the user is asked once, OK replaces it and Cancel stops linking.
+  - It keeps the BOM and CRLF/LF.
+  - It never links a file that isn't valid UTF-8, and the user is told.
+- **.txt files are literal:** each line opens as plain text, so `# TODO`, `1. step`, `* note`, `> x`, table rows and similar stay as typed, and the plain text shown is written back. Formatting added in Rotepad is saved as text only.
+- **Shared serializer:**
+  - Plain paragraph lines starting `3. ` are written `3\. `, and table-separator rows get escaped pipes, so such literal text can't reopen as a list or table.
+  - Fixed an existing bug where tokens such as `a\.b` gained a backslash on every Formatted-view save.
+  - richMarkdown accepts a root element.
+- Added desktop/linked-files.js (appended after library.js), desktop/linked-files-smoke.cjs (11 checks) and root serializer assertions. Updated the README, architecture and testing guide.
+
+| Area / expected behavior | Current verification | Result / limits |
+| --- | --- | --- |
+| Write-back | linked-files-smoke.cjs with real files in a disposable profile. A 35-line tricky `.txt` corpus round-trips exactly, both directly and after editor re-serialization. No write happens without an edit, and the edit alone changes the bytes, with BOM and CRLF kept. Also covered: autosave and Ctrl+S, bold saved as plain text, outside-change Cancel and OK, Markdown write-back, a deleted file not recreated, non-UTF-8 bytes unchanged, close flush and restart without a prompt | Passed. Dialogs are mocked. Real double-click/Open with was not exercised (startup arguments and the mocked picker were). |
+| Neighbors | All root tests and browser smokes; every desktop smoke; the editor suites with `--desktop` | Passed, except one note-tabs-smoke.cjs failure (a Clear formatting check read `'n'`) that did not reproduce in 11 consecutive reruns; recorded as an intermittent failure under investigation. |
+| Limits | Non-breaking spaces in a `.txt` become spaces after an edit; editing a `.md` in Formatted view writes Rotepad's normalized Markdown; no build or release | Installed 0.12.2 still writes only the library copy. |
+
 ## 10/7/26 8:43 PM GMT+8 — Public 0.12.2 installer download
 
 - Published the [0.12.2 Windows testing release](https://github.com/jrosprs7/rotepad/releases/tag/v0.12.2) (pre-release) with Rotepad-0.12.2-Setup.exe, tagged on dae63eb5bda6d8b1adf8fb024d7fdbb2da6fc684. The installer was built from 01226d3; the later commit only points the README download link at 0.12.2.

@@ -117,6 +117,7 @@ node desktop/multi-window-smoke.cjs
 node desktop/note-tabs-smoke.cjs
 node desktop/shell-ui-smoke.cjs
 node desktop/context-menu-smoke.cjs
+node desktop/linked-files-smoke.cjs
 ```
 
 | Script in desktop/ | Main area |
@@ -131,6 +132,7 @@ node desktop/context-menu-smoke.cjs
 | shell-ui-smoke.cjs | Windows title-bar safe area, themes/resize/Focus and window-state changes, About version/copyright, mocked default-app action, invalid-theme rejection and TXT startup/second-window opening |
 | print-preview-smoke.cjs | Preview, PDF export, mocked printing, errors and empty-workspace guard |
 | context-menu-smoke.cjs | Right-click menu on note text: items and enabled states; Copy/Cut/Paste/Undo/Redo/Select All acting on the note; link open (mocked) and copy; Markdown view; tabs keep note options; plain chrome shows none. Spelling layout uses a supplied misspelling event because the spellchecker reported none in development Electron. Native menus are captured in the main process, not clicked. The system clipboard is used, and its text is saved and restored |
+| linked-files-smoke.cjs | Write-back to opened files with real files in a disposable profile: an exact round trip of a mixed literal `.txt` corpus (direct and after editor re-serialization); no write before an edit; BOM, CRLF and untouched lines kept; Ctrl+S and autosave; plain text for added bold; outside change with Cancel (unlink) and OK (overwrite); Markdown write-back; a missing file not recreated; non-UTF-8 left unchanged; close flush; restart without a prompt. Dialogs are mocked |
 | close-smoke.cjs | Delegates to library-smoke.cjs; does not need a duplicate run |
 
 Storage changes should include both library-smoke.cjs and markdown-files-smoke.cjs. Printing and layout changes need the corresponding desktop checks.

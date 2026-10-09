@@ -5,7 +5,7 @@ fs.mkdirSync(path.join(__dirname, 'app'), { recursive: true });
 const html = fs.readFileSync(path.join(root, 'Rotepad.html'), 'utf8');
 const integration = fs.readFileSync(path.join(__dirname, 'integration.js'), 'utf8');
 const bootstrap=fs.readFileSync(path.join(__dirname,'library-merge.cjs'),'utf8')+'\n'+fs.readFileSync(path.join(__dirname,'library-bootstrap.js'),'utf8');
-const library=fs.readFileSync(path.join(__dirname,'library.js'),'utf8');
+const library=fs.readFileSync(path.join(__dirname,'library.js'),'utf8')+'\n'+fs.readFileSync(path.join(__dirname,'linked-files.js'),'utf8');
 const singleRow=fs.readFileSync(path.join(__dirname,'single-row.js'),'utf8');
 const noteTabs=fs.readFileSync(path.join(__dirname,'note-tabs.js'),'utf8');
 const shellUI=fs.readFileSync(path.join(__dirname,'shell-ui.js'),'utf8');

@@ -196,7 +196,7 @@ function inline(s){
  // A line-leading \-, \+ or \# is literal text the formatted editor escaped so it cannot reopen as a bullet or heading.
  const literalMarker=/^(\s*)\\([-+]|#{1,6})(?=[ \t])/.exec(s);if(literalMarker){out=escapeHTML(literalMarker[1]+literalMarker[2]);i=literalMarker[0].length;}
  while(i<s.length){const rest=s.slice(i);let m;
-  if((m=/^[^\s<>`*]*\\\.[^\s<>`*]*/.exec(rest))){out+='<span data-no-link="true">'+escapeHTML(m[0].replace(/\\\./g,'.'))+'</span>';i+=m[0].length;continue}
+  if((m=/^[^\s<>`*]*\\\.[^\s<>`*]*/.exec(rest))){out+='<span data-no-link="true">'+escapeHTML(m[0].replace(/\\([\\`*_\[\]~|=>.+#-])/g,'$1'))+'</span>';i+=m[0].length;continue}
   if((m=/^\\([\\`*_\[\]~|=>])/.exec(rest))){out+=escapeHTML(m[1]);i+=m[0].length;continue}
   if((m=/^`([^`]+)`/.exec(rest))){out+='<code>'+escapeHTML(m[1])+'</code>';i+=m[0].length;continue}
   if((m=/^\[([^\]]+)\]\((https?:\/\/[^\s]+?)\)/.exec(rest))){const u=safeURL(m[2]);out+=u?'<a href="'+escapeHTML(u)+'" target="_blank" rel="noopener noreferrer">'+escapeHTML(m[1].replace(/\\([\\`*_\[\]~|=>])/g,'$1'))+'</a>':escapeHTML(m[0]);i+=m[0].length;continue}
@@ -269,10 +269,10 @@ function restoreRange(){rich.focus({preventScroll:true});const s=getSelection();
 function caretOffset(){const s=getSelection();if(!s.rangeCount||!rich.contains(s.anchorNode))return 0;const r=s.getRangeAt(0).cloneRange();r.selectNodeContents(rich);r.setEnd(s.anchorNode,s.anchorOffset);return r.toString().length}
 function placeCaret(offset){const walker=document.createTreeWalker(rich,NodeFilter.SHOW_TEXT);let n,left=Math.max(0,offset),last;while(n=walker.nextNode()){last=n;if(left<=n.length){const r=document.createRange();r.setStart(n,left);r.collapse(true);const s=getSelection();s.removeAllRanges();s.addRange(r);rememberRange();return}left-=n.length}const r=document.createRange();if(last)r.setStart(last,last.length);else{r.selectNodeContents(rich)}r.collapse(false);const s=getSelection();s.removeAllRanges();s.addRange(r);rememberRange()}
 function markdownText(s){return s.replace(/\u00a0/g,' ').replace(/([\\*_`\[\]=>~])/g,'\\$1')}
-function richMarkdown(){
+function richMarkdown(root=rich){
  function content(node){return [...node.childNodes].map(visit).join('')}
- // Literal line-leading -, + and # cannot reopen as a bullet or heading.
- function paragraph(t){return (t==='\n'?'':t.replace(/\n$/,'').replace(/^([ \t]*)([-+])(?=[ \t])/gm,'$1\\$2').replace(/^(#{1,6})(?=[ \t])/gm,'\\$1'))+'\n'}
+ // Literal line-leading -, +, #, "3. " and table-separator rows cannot reopen as a bullet, heading, numbered list or table.
+ function paragraph(t){return (t==='\n'?'':t.replace(/\n$/,'').replace(/^([ \t]*)([-+])(?=[ \t])/gm,'$1\\$2').replace(/^(#{1,6})(?=[ \t])/gm,'\\$1').replace(/^([ \t]*\d+)\.(?=[ \t])/gm,'$1\\.').replace(/^(?=[^\n]*\|)[ \t|:-]*-{3,}[ \t|:-]*$/gm,line=>line.replace(/\|/g,'\\|')))+'\n'}
  // Code keeps Enter/Shift+Enter breaks (<br>) and line blocks as newlines; textContent would join them.
  function codeText(node){let text='',afterBlock=false;for(const c of node.childNodes){const block=c.nodeType===1&&/^(DIV|P)$/.test(c.tagName);if((block||afterBlock)&&text&&!text.endsWith('\n'))text+='\n';text+=c.nodeType===3?c.data:c.nodeType!==1?'':c.tagName==='BR'?'\n':codeText(c);afterBlock=block}return text}
  function visit(n){if(n.nodeType===3)return markdownText(n.data);if(n.nodeType!==1)return '';const tag=n.tagName,t=content(n);
@@ -300,7 +300,7 @@ function richMarkdown(){
  }
  // Text pasted into an empty editor sits outside any paragraph; keep it on its own line before the next block.
  let out='',run='';
- for(const n of rich.childNodes){if(n.nodeType===1&&/^(P|DIV|H[1-6]|UL|OL|BLOCKQUOTE|PRE|HR|TABLE)$/.test(n.tagName)){if(run)out+=run.trim()?paragraph(run):run;run='';out+=visit(n)}else run+=visit(n)}
+ for(const n of root.childNodes){if(n.nodeType===1&&/^(P|DIV|H[1-6]|UL|OL|BLOCKQUOTE|PRE|HR|TABLE)$/.test(n.tagName)){if(run)out+=run.trim()?paragraph(run):run;run='';out+=visit(n)}else run+=visit(n)}
  if(run)out+=run.trim()?paragraph(run):run;
  return out.replace(/\n$/,'');
 }

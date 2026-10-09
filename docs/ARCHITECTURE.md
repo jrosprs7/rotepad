@@ -32,7 +32,7 @@ The shared formatted-editor helper handles Tab only inside the editing surfaces:
 
 ## Desktop assembly
 
-desktop/prepare.cjs reads the root HTML and writes desktop/app/Rotepad.html. It inserts library-merge.cjs and library-bootstrap.js before editor initialization, enables compact desktop menus, and appends integration.js, library.js, single-row.js, note-tabs.js, shell-ui.js and print-preview.js. It also copies the font license and icon assets. The preparation step does not edit the root HTML.
+desktop/prepare.cjs reads the root HTML and writes desktop/app/Rotepad.html. It inserts library-merge.cjs and library-bootstrap.js before editor initialization, enables compact desktop menus, and appends integration.js, library.js, linked-files.js, single-row.js, note-tabs.js, shell-ui.js and print-preview.js. It also copies the font license and icon assets. The preparation step does not edit the root HTML.
 
 | Source | Responsibility |
 | --- | --- |
@@ -42,6 +42,7 @@ desktop/prepare.cjs reads the root HTML and writes desktop/app/Rotepad.html. It 
 | desktop/library-merge.cjs | Shared three-way merge for concurrent saves, incoming changes and cached draft recovery |
 | desktop/integration.js | Native integration and desktop adaptations |
 | desktop/library.js | Library, workspace membership, autosave and close coordination |
+| desktop/linked-files.js | Write-back to files the user opened: literal .txt conversion, plain-text output and conflict prompts (appended after library.js) |
 | desktop/markdown-store.cjs | Managed Markdown files, stable mapping, names, migration and reconciliation |
 | desktop/single-row.js | Desktop header/toolbar arrangement and screen-only minimalist styling for workspace, controls and status bar |
 | desktop/note-tabs.js | Compact tabs for this window's open notes, keyboard navigation, note-option access and tab-strip styling |
@@ -75,7 +76,8 @@ The normal profile is %APPDATA%/Rotepad:
 - managed-notes.json: stable note-ID-to-file mapping.
 - library-before-markdown.json: retained pre-migration library snapshot.
 - desktop-settings.json: default notes folder.
-- note-files.json: older import/export associations, separate from managed-file mapping.
+- note-files.json: older import/export associations, separate from managed-file mapping
+- linked-files.json: notes linked to the file they were opened from (path, md/txt kind, BOM, line ending, SHA-256 of the last read or written bytes).
 
 The main process serializes library-save operations. Each window submits its snapshot and last acknowledged baseline; library-merge.cjs applies only its changes to the current library. Independent edits are combined. Competing text/title edits, edits against Trash, or edits to removed notes preserve the local version in a new conflict copy. Concurrent history merging retains the spacing and count limits. Managed Markdown files save first, followed by library.json. The renderer acknowledges success only after both finish. Conflict IDs survive a failed write and retry in the owning window. Existing file writes use temporary replacement; new names use exclusive creation. Rename/Trash transitions create the destination and commit the index before removing the old managed copy.
 
@@ -86,6 +88,25 @@ The primary window uses rotepad.library.v2; additional windows use rotepad.libra
 Successful saves broadcast the canonical library to other registered windows. Renderers merge it with pending edits while keeping their own open-note membership, positions and view/preferences. New notes from another window appear in Library without opening automatically. Incoming updates wait for an in-flight save, composition or open dialog to finish. Unchanged note objects retain identity across acknowledgments for asynchronous note actions. Remote content changes invalidate that note's local Undo stack; edits to other notes leave the active editor and selection alone.
 
 Startup reads managed Markdown and preserves conflicting recovered text in a separate recovered-draft note. Missing managed files may recover from stored text. This is startup reconciliation: there is no live external-file watcher. Untracked files in the notes folder require Import Markdown.
+
+#### Opened files
+
+A file opened by double-click, Open with, startup arguments or the Import picker still becomes a managed note, but stays linked to its original. Binding records the link in linked-files.json only when the file decodes as UTF-8. A relink keeps the earlier hash, so outside edits made in between are still detected. Exports in note-files.json are never linked.
+
+desktop/linked-files.js wraps flushLibrary, so after every library save (autosave, Ctrl+S, close) it writes changed linked notes through the `note-sync` IPC:
+- **Markdown files:** the note's Markdown is written.
+- **Text files:** the plain text shown (`plainText`) is written.
+- **Only after edits:** the content last written is tracked, so an unedited note is never written.
+
+In main.cjs, `note-sync` accepts only a note ID and text, never a path:
+- It writes only a linked file, serialized per file.
+- It refuses when the file is missing (it never recreates one).
+- It returns "changed" when the on-disk SHA-256 differs from the stored hash. The renderer then asks once: OK forces the write; Cancel unlinks through `note-unlink`.
+- Otherwise it restores the file's BOM and line endings and writes atomically.
+
+A `.txt` opens literally. `literalMarkdown` places each line in a paragraph and serializes it with the shared richMarkdown(root), whose paragraph escapes cover `#`, `-`, `+`, `*`, `>`, line-leading `3. ` (written `3\.`) and table-separator pipes. `plainText` renders Markdown and joins block text, writing user-created lists, tasks, quotes and tables as plain markers. linked-files-smoke.cjs checks that a mixed corpus round-trips exactly, both directly and after re-serialization by the editor. The decoder for `\.`-tokens now undoes every serializer escape, so backslashes no longer double on each save.
+
+Remaining limits: non-breaking spaces become ordinary spaces (shared serializer behavior), and editing a `.md` in Formatted view rewrites it in Rotepad's normalized Markdown.
 
 Close note and Move to Trash are separate operations. Closing retains the note in Library. Desktop Ctrl+S flushes managed files and metadata; Ctrl+Shift+S exports another copy. Historical 0.4.x close prompts and 0.5.x JSON-only saving descriptions are superseded.
 

@@ -55,6 +55,11 @@ check([e('PRE', [e('CODE', [t('line1'), e('BR'), t('inserted\nline2'), e('DIV', 
 check([t('First'), e('P', [t('Second')]), e('P', [t('Third')])], 'First\nSecond\nThird');
 check([t('- bare'), e('P', [e('BR')]), e('P', [t('beta')])], '\\- bare\n\nbeta');
 check([t('only bare text')], 'only bare text');
+// Plain "3. " lines and table-separator rows stay text; backslashes before dots no longer double on each save.
+check([e('P', [t('1. step')]), e('P', [t('  12. indented')]), e('P', [t('3.14 value')]), e('P', [t('a | b')]), e('P', [t('|---|---|')])], '1\\. step\n  12\\. indented\n3.14 value\na | b\n\\|---\\|---\\|');
+assert.equal(context.markdown('1\\. step\na | b\n\\|---\\|---\\|'), '<p><span data-no-link="true">1.</span> step</p><p>a | b</p><p>|---|---|</p>');
+check([e('P', [e('SPAN', [t('a\\.b')], { 'data-no-link': 'true' })])], 'a\\\\\\.b');
+assert.equal(context.inline('a\\\\\\.b'), '<span data-no-link="true">a\\.b</span>');
 for (const [text, linked] of [['notes.md', false], ['node.js', false], ['end.Next', false], ['example.com', true], ['claude.ai', true], ['www.site.md', true], ['https://x.md/a', true], ['example.com/path?q=1', true]])
   assert.equal(context.inline(text).includes('<a '), linked, text);
 check([e('BLOCKQUOTE', [t('> literal inside quote')])], '> \\> literal inside quote');

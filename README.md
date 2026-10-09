@@ -39,9 +39,14 @@ On desktop, notes automatically save to managed Markdown files. Ctrl+S flushes p
 
 Open multiple desktop windows with **Menu → File → New window**, **Ctrl+Shift+N**, or by launching Rotepad again. Each additional window starts a new blank note and shares the same Library. Open an existing note from Library to work on it alongside another note. Windows keep their own open notes, active note, view and cursor; closing one window leaves the others running. Changes appear in other windows automatically. If simultaneous edits conflict, Rotepad keeps a separate conflict copy and shows a status message. Restart restores one window and recovers pending drafts from the others; it does not reopen the previous number of windows.
 
-Import Markdown creates a managed copy; Export Markdown creates an additional copy. Opening an existing managed file reuses its note. The default notes folder is Documents/Rotepad Docs unless changed in Settings; changing it does not relocate existing notes.
+Opening a `.md` or `.txt` file (double-click, Open with, or Import Markdown…) keeps the note linked to that file. Autosave and Ctrl+S save your edits back to it, and the status bar shows "Also saves to" with the file name. Rotepad also keeps its own library copy, which holds history and recovery.
+- **Text files:** a `.txt` file opens as literal text, so lines such as `# TODO` or `1. step` stay exactly as typed. Rotepad keeps the file's line endings and byte-order mark. Formatting you add (bold, lists) can't be stored in a `.txt` file, so only the text is saved there.
+- **Markdown files:** a `.md` file is saved as Markdown.
+- **Safety:** if another program changed the file since Rotepad last saved it, Rotepad asks before replacing it; Cancel stops saving to that file. A file that was moved or deleted is not recreated. A text file that isn't UTF-8 is never changed.
 
-The Windows installer registers Rotepad for `.md`, `.markdown` and `.txt`. Its **Default apps** page, shown after you choose the folder, offers two boxes, both unticked: **Markdown files (.md)** and **Text files (.txt)**. For each box you tick, Windows shows its own "How do you want to open…" window after installation. Choose Rotepad there and confirm; Windows only lets you, not the installer, change a default app. You can also do this later from Rotepad's Settings, which opens Windows Settings. Opening an external text file creates a managed Markdown copy, following the same import behavior as external Markdown files.
+Export Markdown creates an additional, unlinked copy. Opening an existing managed file reuses its note. The default notes folder is Documents/Rotepad Docs unless changed in Settings; changing it does not relocate existing notes.
+
+The Windows installer registers Rotepad for `.md`, `.markdown` and `.txt`. Its **Default apps** page, shown after you choose the folder, offers two boxes, both unticked: **Markdown files (.md)** and **Text files (.txt)**. For each box you tick, Windows shows its own "How do you want to open…" window after installation. Choose Rotepad there and confirm; Windows only lets you, not the installer, change a default app. You can also do this later from Rotepad's Settings, which opens Windows Settings.
 
 **Menu → Help → About Rotepad** shows the installed version and **© 2026, J.E. Rosaroso**.
 
@@ -55,7 +60,7 @@ Right-click in the desktop app's text for Undo, Redo, Cut, Copy, Paste and Selec
 
 Desktop Markdown files hold current text. The app profile holds workspace information, history, mappings and recovery text. Browser storage is specific to its browser profile and origin; browser file saving depends on browser support and permissions.
 
-Use Backup/Restore to transfer browser notes to desktop or to another browser. Markdown export does not include history. Keep separate backups. External files are not watched live, dropping a file into the notes folder does not import it, and phone synchronization is not implemented.
+Use Backup/Restore to transfer browser notes to desktop or to another browser. Markdown export does not include history. Keep separate backups. External files are not watched live (an outside change to a linked file is noticed the next time Rotepad saves it), dropping a file into the notes folder does not import it, and phone synchronization is not implemented.
 
 See [storage details](docs/ARCHITECTURE.md#storage-and-recovery) before changing data handling.
 
