@@ -1,5 +1,15 @@
 # Rotepad changelog
 
+## 10/9/26 10:34 PM GMT+8 — Windows build 0.12.4 (not published)
+
+- Set the desktop package version to 0.12.4 for right-click formatting and single-spaced copy. Built Windows x64 NSIS and portable packages with `pnpm run dist` (pnpm 11.19.0 through corepack). The README download link still points at the published 0.12.2.
+- Rotepad-0.12.4-Setup.exe is 107,295,948 bytes, SHA-256 `172c72d84121e6dcf8735740a2ead6b050e2a706cbeef353df12a4c76ecc727b`. Rotepad-0.12.4-Windows.exe is 107,053,229 bytes, SHA-256 `78c2cc1fe231df468a41af6bd6b21baba0c472980906780f972c8db7e3948b32`.
+
+| Area / expected behavior | Current verification | Result / limits |
+| --- | --- | --- |
+| Packaged payload | Extracted app.asar: version 0.12.4. main.cjs, preload.cjs, library-merge.cjs, markdown-store.cjs and the prepared Rotepad.html are byte-identical to the tested sources and include the `context-format` menu items, the preload allowlist, the renderer hook and the copy handler. shell-ui-smoke.cjs and context-menu-smoke.cjs passed after the bump | Passed. The full suites ran on this source before the version-only change. |
+| Installation | Not run | Manual: install over 0.12.1, right-click selected text (formatting items), copy several lines into Notepad (single-spaced). |
+
 ## 10/9/26 10:30 PM GMT+8 — Right-click formatting and single-spaced copy
 
 - **Right-click did nothing for the user** because the installed app is 0.12.1, which predates the desktop right-click menu (added in 0.12.2). At the user's request, the menu now also offers **Bold, Italic, Underline, Strikethrough, Highlight and Clear formatting** when text is selected in the note (Formatted or Markdown view). Single-line fields such as Find don't get them. The items go to the renderer as a fixed `context-format` type; preload allows only those types, and the renderer applies them with the toolbar's own commands while the note editor has focus.
