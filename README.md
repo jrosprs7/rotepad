@@ -54,7 +54,7 @@ Desktop Ctrl+P opens print preview with paper size, orientation and PDF export. 
 
 Tab inserts a tab at the text cursor (displayed with four-column tab stops). With multiple lines selected it indents them; in a list it nests the item. Shift+Tab decreases indentation. Tables retain Tab/Shift+Tab cell navigation. These editor shortcuts work in Formatted and Markdown/Split views; ordinary dialog and toolbar controls retain focus navigation.
 
-Right-click in the desktop app's text for Undo, Redo, Cut, Copy, Paste and Select All. Right-click a link to open or copy it, and a word marked as misspelled for spelling suggestions or Add to dictionary. Right-clicking a tab still opens its note options. The browser version uses the browser's own right-click menu.
+Right-click in the desktop app's text for Undo, Redo, Cut, Copy, Paste and Select All. With text selected in the note, the menu also offers Bold, Italic, Underline, Strikethrough, Highlight and Clear formatting. Right-click a link to open or copy it, and a word marked as misspelled for spelling suggestions or Add to dictionary. Right-clicking a tab still opens its note options. The browser version uses the browser's own right-click menu. Copying from Formatted view puts one line break between lines, so text pasted into other apps keeps its spacing (formatting is also copied for apps that accept it).
 
 ## Data and portability
 

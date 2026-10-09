@@ -36,5 +36,7 @@ $('settings-dialog').querySelector('.settings-grid').append(folderRow);
 window.rotDesktop.settings().then(settings=>{$('default-save-folder').textContent=settings.saveFolder;});
 $('choose-save-folder').onclick=async()=>{try{const settings=await window.rotDesktop.chooseFolder();if(settings)$('default-save-folder').textContent=settings.saveFolder;}catch(error){alert('Could not change save folder: '+error.message);}};
 let openQueue=Promise.resolve();window.rotDesktop.onOpen(file=>{openQueue=openQueue.then(()=>openDesktopNote(file)).catch(error=>alert('Could not open note: '+error.message));});
+// Right-click formatting: applied with the toolbar's own commands, and only while the note editor has the selection.
+window.rotDesktop.onContextFormat(type=>{const target=document.activeElement;if(target!==editor&&!rich.contains(target))return;if(type==='clear')clearSelectedFormatting();else if(type==='strike'||type==='highlight')extraFormat(type);else format(type);});
 void window.rotDesktop.ready();
 

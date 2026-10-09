@@ -37,6 +37,8 @@ function showContextMenu(win,params){
  }
  if(params.isEditable)items.push({label:'Undo',click:()=>shortcut(win,'Z')},{label:'Redo',click:()=>shortcut(win,'Y')},{type:'separator'},{role:'cut',enabled:flags.canCut},{role:'copy',enabled:flags.canCopy},{role:'paste',enabled:flags.canPaste},{type:'separator'},{role:'selectAll'});
  else if(params.selectionText.trim())items.push({role:'copy'});
+ // Selected note text (the formatted editor or the Markdown textarea, not single-line fields) also gets formatting; the renderer applies it through the toolbar's commands.
+ if(params.isEditable&&params.selectionText.trim()&&['none','text-area'].includes(params.formControlType))items.push({type:'separator'},...[['Bold','bold'],['Italic','italic'],['Underline','underline'],['Strikethrough','strike'],['Highlight','highlight'],['Clear formatting','clear']].map(([label,type])=>({label,click:()=>win.webContents.send('context-format',type)})));
  if(link)items.push(...(items.length?[{type:'separator'}]:[]),{label:'Open link',click:()=>external(link)},{label:'Copy link address',click:()=>clipboard.writeText(link)});
  if(items.length)Menu.buildFromTemplate(items).popup({window:win});
 }

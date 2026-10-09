@@ -48,8 +48,35 @@ async function wordBox(word){return page.evaluate(word=>{const w=document.create
  // Tabs keep their own right-click (note options); no Electron menu pops up there.
  await page.evaluate(()=>setMode('rich'));const tab=await page.locator('.note-tab').first().boundingBox();items=await rightClick(tab.x+30,tab.y+tab.height/2);
  assert.equal(items,null);assert.equal(await page.locator('#note-actions-dialog').evaluate(d=>d.open),true);await page.keyboard.press('Escape');checks++;
+ // Selected note text gets formatting items that apply the toolbar's commands; Clear formatting removes them again.
+ const formatLabels=['Bold','Italic','Underline','Strikethrough','Highlight','Clear formatting'];
+ const selectWord=async word=>{const b=await wordBox(word);await page.mouse.dblclick(b.x,b.y);if((await page.evaluate(()=>getSelection().toString())).endsWith(' '))await page.keyboard.press('Shift+ArrowLeft');return b;};
+ await page.evaluate(()=>{createNote('Context format','one two three four');setMode('rich');rich.focus();});
+ box=await selectWord('two');items=await rightClick(box.x,box.y);assert.deepEqual(labels(items).slice(-6),formatLabels);
+ await choose('Highlight');assert.equal(await source(),'one ==two== three four');
+ box=await selectWord('three');await rightClick(box.x,box.y);await choose('Strikethrough');assert.equal(await source(),'one ==two== ~~three~~ four');
+ box=await selectWord('four');await rightClick(box.x,box.y);await choose('Bold');assert.equal(await source(),'one ==two== ~~three~~ **four**');
+ box=await selectWord('four');await rightClick(box.x,box.y);await choose('Clear formatting');assert.equal(await source(),'one ==two== ~~three~~ four');checks++;
+ await page.keyboard.press('Control+Z');assert.equal(await source(),'one ==two== ~~three~~ **four**','Undo restores the formatting cleared from the menu');checks++;
+ // A collapsed caret gets no formatting items; neither do single-line fields such as Find.
+ box=await wordBox('one');await page.mouse.click(box.x,box.y);assert.ok(!labels(await rightClick(box.x,box.y)).includes('Bold'));
+ await page.keyboard.press('Control+F');await page.locator('#find-text').fill('one');await page.locator('#find-text').selectText();const field=await page.locator('#find-text').boundingBox();items=await rightClick(field.x+20,field.y+field.height/2);
+ assert.ok(labels(items).includes('Paste'));assert.ok(!labels(items).includes('Bold'));await page.keyboard.press('Escape');checks++;
+ // Markdown view: the textarea selection is wrapped in Markdown markers.
+ await page.evaluate(()=>{setMode('write');editor.focus();const i=editor.value.indexOf('one');editor.setSelectionRange(i,i+3);});const md=await page.locator('#editor').boundingBox();
+ items=await rightClick(md.x+30,md.y+20);assert.deepEqual(labels(items).slice(-6),formatLabels);await choose('Highlight');assert.equal(await page.evaluate(()=>editor.value),'==one== ==two== ~~three~~ **four**');checks++;
+
+ // Copy writes one line break per typed line (other apps used to receive a blank line between them), keeps a typed blank line, and Cut does the same.
+ await page.evaluate(()=>{createNote('Copy lines','');setMode('rich');rich.focus();});
+ await page.keyboard.type('first line');await page.keyboard.press('Enter');await page.keyboard.type('second line');await page.keyboard.press('Enter');await page.keyboard.press('Enter');await page.keyboard.type('after blank');
+ await page.keyboard.press('Control+A');await page.keyboard.press('Control+C');await page.waitForTimeout(100);assert.equal(await clip(),'first line\nsecond line\n\nafter blank');
+ assert.ok(await host.evaluate(({clipboard})=>clipboard.has('text/html')),'formatted copy is kept for apps that accept it');
+ box=await wordBox('first');await page.mouse.click(box.x,box.y);await page.keyboard.press('Home');await page.keyboard.press('Shift+ArrowDown');await page.keyboard.press('Shift+End');box=await wordBox('second');
+ items=await rightClick(box.x,box.y);await choose('Copy');assert.equal(await clip(),'first line\nsecond line');checks++;
+ const before=await source();await page.keyboard.press('Control+X');await page.waitForTimeout(100);assert.equal(await clip(),'first line\nsecond line');assert.ok(!(await source()).includes('second line'));
+ await page.keyboard.press('Control+Z');assert.equal(await source(),before,'Undo restores cut lines');checks++;
  // Non-editable chrome without a selection shows nothing.
  const status=await page.locator('footer').boundingBox();await page.evaluate(()=>getSelection().removeAllRanges());items=await rightClick(status.x+status.width-40,status.y+status.height/2);assert.equal(items,null);checks++;
  assert.deepEqual(errors,[]);
- console.log(`PASS ${checks} desktop context-menu checks: editing commands and states, Copy/Cut/Paste/Undo/Redo/Select All on the note, link open/copy, spelling suggestion, Markdown view, tab note options and plain chrome.`);
+ console.log(`PASS ${checks} desktop context-menu checks: editing commands and states, Copy/Cut/Paste/Undo/Redo/Select All on the note, link open/copy, spelling suggestion, Markdown view, formatting items, single-spaced copy/cut, tab note options and plain chrome.`);
 })().catch(error=>{console.error(error);process.exitCode=1;}).finally(async()=>{if(host){if(savedClipboard!==null)await host.evaluate(({clipboard},text)=>clipboard.writeText(text),savedClipboard).catch(()=>{});await host.close();}});

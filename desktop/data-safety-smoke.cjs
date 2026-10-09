@@ -75,6 +75,13 @@ const selectedText=()=>page.evaluate(()=>getSelection().toString());
  // D7: multiline paste into a brand-new note keeps every line.
  for(const [text,expected] of [['First\nSecond\nThird','First\nSecond\nThird'],['alpha\n\nbeta','alpha\n\nbeta'],['--\n---','--\n---']]){await fresh();await paste(text);await expectSource(expected,'blank paste '+JSON.stringify(text));await roundtrip();await expectSource(expected,'blank paste round trip');}
 
+ // Copy: typed lines go to the clipboard one line break apart (Chromium's default added a blank line between paragraphs); a typed blank line stays, and pasting the copy back keeps the same lines.
+ const copied=()=>page.evaluate(()=>{const data=new DataTransfer();rich.dispatchEvent(new ClipboardEvent('copy',{clipboardData:data,bubbles:true,cancelable:true}));return {plain:data.getData('text/plain'),html:data.getData('text/html')};});
+ await fresh();for(const [i,line] of ['Hello this is rotepad.','i pressed enter','','and the 3rd line'].entries()){if(i)await page.keyboard.press('Enter');await page.keyboard.type(line);}
+ await page.keyboard.press('Control+A');let copy=await copied();assert.equal(copy.plain,'Hello this is rotepad.\ni pressed enter\n\nand the 3rd line');assert.match(copy.html,/i pressed enter/);checks++;
+ await caretBefore('pressed');await page.keyboard.press('Shift+End');assert.equal((await copied()).plain,'pressed enter','a partial line copies as itself');checks++;
+ await fresh();await paste('Hello this is rotepad.\ni pressed enter\n\nand the 3rd line');await expectSource('Hello this is rotepad.\ni pressed enter\n\nand the 3rd line','copied lines paste back unchanged');
+
  // F1/F2: typed # and ~~ stay literal through save/reopen; file names and typos are not auto-linked; web addresses still are.
  await fresh();await page.keyboard.type('# Not a heading');await page.keyboard.press('Enter');await page.keyboard.type('~~not struck~~');await page.keyboard.press('Enter');await page.keyboard.type('## two #tag');
  await expectSource('\\# Not a heading\n\\~\\~not struck\\~\\~\n\\## two #tag','literal # and ~~ escaped');await roundtrip();
@@ -91,5 +98,5 @@ const selectedText=()=>page.evaluate(()=>getSelection().toString());
  assert.equal(saved.text,'First\nSecond\n\\# literal');if(native){await page.evaluate(()=>flushLibrary());const index=JSON.parse(await fs.readFile(path.join(profile,'managed-notes.json'),'utf8'));assert.equal(await fs.readFile(index[saved.id].file,'utf8'),saved.text);}
  await page.reload();await page.waitForFunction(()=>typeof rich!=='undefined'&&rich.textContent.includes('literal'));assert.equal(await page.locator('#rich-editor h1').count(),0);assert.equal(await page.evaluate(()=>[...rich.childNodes].map(n=>n.textContent).join('\n')),'First\nSecond\n# literal');checks++;
  assert.deepEqual(errors,[]);
- console.log(`PASS ${checks} data-safety checks in ${native?'Electron':'Edge'}: Find keeps focus, selected list indent/outdent and Undo, code lines, task Backspace/Delete, empty markers, blank-note paste, literal # and ~~, file-name links and reload.`);
+ console.log(`PASS ${checks} data-safety checks in ${native?'Electron':'Edge'}: Find keeps focus, selected list indent/outdent and Undo, code lines, task Backspace/Delete, empty markers, blank-note paste, single-spaced copy, literal # and ~~, file-name links and reload.`);
 })().catch(error=>{console.error(error);process.exitCode=1;}).finally(async()=>{if(host)await host.close();});

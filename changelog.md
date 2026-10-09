@@ -1,5 +1,17 @@
 # Rotepad changelog
 
+## 10/9/26 10:30 PM GMT+8 — Right-click formatting and single-spaced copy
+
+- **Right-click did nothing for the user** because the installed app is 0.12.1, which predates the desktop right-click menu (added in 0.12.2). At the user's request, the menu now also offers **Bold, Italic, Underline, Strikethrough, Highlight and Clear formatting** when text is selected in the note (Formatted or Markdown view). Single-line fields such as Find don't get them. The items go to the renderer as a fixed `context-format` type; preload allows only those types, and the renderer applies them with the toolbar's own commands while the note editor has focus.
+- **Copied lines pasted double-spaced in other apps.** Each line in Formatted view is its own paragraph, and Chromium's default plain-text copy puts a blank line between paragraphs. Copy and Cut in Formatted view now write one line break per line, keep a typed blank line, and still include the formatted HTML for apps that accept it. This applies to the browser version too. Pasting the copy back into Rotepad also no longer doubles the lines.
+- Updated the README, architecture and testing guide; added checks to context-menu-smoke.cjs (18 checks) and data-safety-smoke.cjs (52 checks).
+
+| Area / expected behavior | Current verification | Result / limits |
+| --- | --- | --- |
+| Menu formatting | context-menu-smoke.cjs in development Electron: items appear only for a selection in the note; Highlight, Strikethrough, Bold and Clear formatting give `==two==`, `~~three~~`, `**four**` and back; Undo restores; Markdown-view Highlight wraps the textarea selection; none for a caret or the Find field | Passed. Native menus are captured in the main process, not clicked. |
+| Copy/Cut | Typed lines (with a blank line) copied with Ctrl+A/Ctrl+C and the menu's Copy give `first line\nsecond line\n\nafter blank` on the system clipboard, with HTML; a two-line selection and Ctrl+X give single line breaks; Undo restores the cut. In Edge, a synthetic copy event gives the same text and the copy pastes back unchanged | Passed. Pasting into specific other apps (Notepad, Word, chat apps) was not exercised. List markers are not added to copied list items, as before. |
+| Neighbors | All root tests; every browser smoke; the editor suites with `--desktop`; every desktop smoke | Passed (note-tabs-smoke.cjs included). No build; installed 0.12.1 is unchanged. |
+
 ## 10/9/26 9:12 PM GMT+8 — Windows build 0.12.3 (not published)
 
 - Set the desktop package version to 0.12.3 for saving back to opened files. Built Windows x64 NSIS and portable packages with `pnpm run dist` (pnpm 11.19.0 through corepack). The README download link still points at the published 0.12.2.

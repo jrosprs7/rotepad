@@ -24,5 +24,6 @@ contextBridge.exposeInMainWorld('rotDesktop', {
   onSettings: callback => {ipcRenderer.on('settings-changed',(_event,settings)=>callback(settings));},
   closeFinish: approved => ipcRenderer.invoke('close-finish',approved),
   onClose: callback => {ipcRenderer.on('request-close',()=>callback());},
-  onOpen: callback => {ipcRenderer.on('opened-note',(_event,file)=>callback(file));}
+  onOpen: callback => {ipcRenderer.on('opened-note',(_event,file)=>callback(file));},
+  onContextFormat: callback => {ipcRenderer.on('context-format',(_event,type)=>{if(['bold','italic','underline','strike','highlight','clear'].includes(type))callback(type);});}
 });
