@@ -1,5 +1,11 @@
 # Rotepad changelog
 
+## 10/9/26 10:51 PM GMT+8 — Public 0.12.4 installer download
+
+- Published the [0.12.4 Windows testing release](https://github.com/jrosprs7/rotepad/releases/tag/v0.12.4) (pre-release) with Rotepad-0.12.4-Setup.exe, tagged on 25c0096cfee10490dc6969d4fc0e86aad27f28ca. The installer was built from e5063e9; the later commit only points the README download link at 0.12.4. The notes also cover 0.12.3's save-back to opened files, which was never released on its own.
+- Verified that GitHub's asset digest matches the local installer (`172c72d84121e6dcf8735740a2ead6b050e2a706cbeef353df12a4c76ecc727b`), and that the 107,295,948-byte download returns HTTP 200 without authentication and hashes identically. No app code or installer bytes changed.
+- Installation, upgrading, real right-clicks, pasting into other apps, save-back after a double-click and desktop spellcheck remain tester checks; the release notes ask testers to report them.
+
 ## 10/9/26 10:34 PM GMT+8 — Windows build 0.12.4 (not published)
 
 - Set the desktop package version to 0.12.4 for right-click formatting and single-spaced copy. Built Windows x64 NSIS and portable packages with `pnpm run dist` (pnpm 11.19.0 through corepack). The README download link still points at the published 0.12.2.
