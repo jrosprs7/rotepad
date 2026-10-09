@@ -2,7 +2,7 @@
 
 Rotepad is an offline writing application with formatted editing, Markdown source, a note library, search, history and backups. The same shared editor supports a standalone browser file and a Windows desktop application.
 
-The desktop package version is **0.12.2**, as declared in [desktop/package.json](desktop/package.json). Windows builds are unsigned previews. macOS/Linux packaging and phone sync remain planned.
+The desktop package version is **0.12.3**, as declared in [desktop/package.json](desktop/package.json). Windows builds are unsigned previews. macOS/Linux packaging and phone sync remain planned.
 
 ## Open Rotepad
 
@@ -74,6 +74,7 @@ See [storage details](docs/ARCHITECTURE.md#storage-and-recovery) before changing
 - [Desktop development](desktop/README.md): Electron builds and Windows packaging.
 - [Roadmap](ROADMAP.md): remaining issues and proposed work.
 - [2026-10-06 QA findings](docs/QA-2026-10-06.md): open bugs from exploratory browser testing, with reproductions.
+- [Session handoff 2026-10-09](docs/HANDOFF-2026-10-09.md): current state, local build/test setup and open items for the next session.
 - [Changelog](changelog.md): completed changes and historical verification.
 - [Archived handoff](docs/archive/HANDOFF-2026-09-20.md) and [0.5.1 QA report](docs/archive/QA-0.5.1.md): historical context, not current instructions.
 

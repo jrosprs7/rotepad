@@ -1,5 +1,16 @@
 # Rotepad changelog
 
+## 10/9/26 9:12 PM GMT+8 — Windows build 0.12.3 (not published)
+
+- Set the desktop package version to 0.12.3 for saving back to opened files. Built Windows x64 NSIS and portable packages with `pnpm run dist` (pnpm 11.19.0 through corepack). The README download link still points at the published 0.12.2.
+- Rotepad-0.12.3-Setup.exe is 107,295,970 bytes, SHA-256 `4ede0f6ffd180032b05ac79b0ab5be3055ac50d8c69ff4881a6361f5a6256f76`. Rotepad-0.12.3-Windows.exe is 107,053,237 bytes, SHA-256 `3a6615927a7e173ae93ef31a76b7f6a4e055009b2cfa2d31287b561664a7d1cc`.
+- Added a [session handoff](docs/HANDOFF-2026-10-09.md) with the current state, the local build and test setup, and open items.
+
+| Area / expected behavior | Current verification | Result / limits |
+| --- | --- | --- |
+| Packaged payload | Extracted app.asar: version 0.12.3. main.cjs, preload.cjs, library-merge.cjs, markdown-store.cjs and the prepared Rotepad.html are byte-identical to the tested sources and include linked-files.js and the `note-sync` IPC. shell-ui-smoke.cjs and linked-files-smoke.cjs passed after the bump | Passed. |
+| Installation | Not run | Manual: install/upgrade, then open a `.txt` by double-click, edit, save and check the original file. |
+
 ## 10/9/26 1:40 PM GMT+8 — Save back to opened .txt and .md files
 
 - **Opened files are now saved back.** The user created a `.txt`, opened it in Rotepad, edited and saved, and the file did not change. Opening a file imported it as a managed copy in Rotepad Docs, and autosave/Ctrl+S only ever wrote that copy. Now a note opened from a file stays linked to it, and every library save (autosave, Ctrl+S, close) also writes the note back to the original. Rotepad keeps its library copy for history and recovery.
