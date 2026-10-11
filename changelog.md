@@ -1,5 +1,17 @@
 # Rotepad changelog
 
+## 10/11/26 1:28 AM GMT+8 — Sidebar hides in narrow windows
+
+- At the user's request, the notes sidebar now hides itself when the window is narrower than 900px. The saved sidebar choice (`prefs.sidebar`) is not changed: in a narrow window the sidebar button shows or hides the sidebar temporarily without saving, and widening the window restores the saved choice. Narrowing again hides it. This applies to the browser version as well; on phone-width screens the sidebar now starts hidden and still opens over the note.
+- The desktop empty workspace (no open note) still keeps the Library visible in a narrow window.
+- The breakpoint uses `matchMedia('(width < 900px)')`; `max-width: 899px` missed Electron's fractional 899.x viewport.
+- Added desktop/sidebar-smoke.cjs; updated the README, architecture and testing guide.
+
+| Area / expected behavior | Current verification | Result / limits |
+| --- | --- | --- |
+| Narrow sidebar | sidebar-smoke.cjs in Edge (16 checks) and development Electron (17): hidden at 899/700px and shown at 900px with the preference kept, narrow toggle without saving, widening restores, a closed preference stays closed, the wide toggle saves, reload while narrow, and (Electron) the empty workspace keeps the Library visible | Passed. Resizing used the viewport size; dragging a real window edge was not exercised. |
+| Neighbors | All root tests; every browser smoke; the editor suites with `--desktop`; every desktop smoke (48 commands) | Passed on the final code. A first run failed tests/library.cjs because the new code sat inside the range that test evaluates without `matchMedia`; the code was moved after applyPrefs and everything was rerun. No build. |
+
 ## 10/9/26 10:51 PM GMT+8 — Public 0.12.4 installer download
 
 - Published the [0.12.4 Windows testing release](https://github.com/jrosprs7/rotepad/releases/tag/v0.12.4) (pre-release) with Rotepad-0.12.4-Setup.exe, tagged on 25c0096cfee10490dc6969d4fc0e86aad27f28ca. The installer was built from e5063e9; the later commit only points the README download link at 0.12.4. The notes also cover 0.12.3's save-back to opened files, which was never released on its own.

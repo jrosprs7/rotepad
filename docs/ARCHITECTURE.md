@@ -56,6 +56,8 @@ The light theme is Pure Ink. Its colors are the light values of the CSS variable
 
 The desktop has a 34px tab strip above its 38px command row. On Windows, titleBarStyle hidden with titleBarOverlay puts this strip in the title bar beside native caption buttons. shell-ui.js reserves the Window Controls Overlay safe area, marks empty space as draggable and tab controls as non-draggable, and follows the current theme. Focus mode retains the Windows title bar but hides tabs; print media hides the entire strip. Other platforms retain their standard frame.
 
+Sidebar visibility comes from sidebarShown() in applyPrefs: prefs.sidebar in windows at least 900px wide, and a temporary, unsaved sidebarPeek below that (matchMedia `(width < 900px)`; the range form avoids missing a fractional 899.x viewport). Crossing the breakpoint resets the peek, reapplies prefs and calls renderNotes, so the desktop empty workspace still forces the Library visible. The toggle changes prefs.sidebar only in wide windows.
+
 note-tabs.js wraps renderNotes and reuses existing note activation, creation, options and close operations; keyed tab nodes retain focus across saves. prefs.tabOrder is window-local workspace metadata, filtered against open/non-Trash notes. Closing the active tab uses that order to select a neighbor. The old title field remains as the editor's internal title binding, with visible renaming moved to tab options. A resize observer keeps the selected tab visible. single-row.js moves the existing sidebar and clear-format buttons, retaining their original listeners and formatting behavior.
 
 ## Storage and recovery

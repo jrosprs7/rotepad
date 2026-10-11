@@ -74,6 +74,7 @@ node desktop/quote-literal-smoke.cjs
 node desktop/bullet-literal-smoke.cjs
 node desktop/data-safety-smoke.cjs
 node desktop/scroll-position-smoke.cjs
+node desktop/sidebar-smoke.cjs
 ```
 
 They cover formatted defaults and view switching, literal typing and opt-in conversion, tables and indentation, responsive toolbar selection (including mouse-selected Clear formatting and Strikethrough from », Escape and keyboard opening), inline formatting reversal, numbered continuation and empty-item exits. Select scripts according to the changed behavior.
@@ -100,6 +101,8 @@ data-safety-smoke.cjs covers the fixed data-loss findings from the [2026-10-06 Q
 - Saving: Clear formatting and Replace all never write empty markers; multiline paste into a blank note keeps every line; copying typed lines writes one line break per line (keeping a typed blank line) and pastes back unchanged; literal `#` and `~~` survive; file names are not auto-linked while web addresses are; reload.
 
 Add `--desktop` to also check the managed Markdown file.
+
+sidebar-smoke.cjs resizes the window across 900px and checks that the sidebar hides below it while prefs.sidebar is kept, the narrow toggle shows and hides it without saving, widening restores the preference, a closed preference stays closed, the wide toggle still saves, and a reload while narrow starts hidden. Add `--desktop` for isolated development Electron, which also checks that the empty workspace keeps the Library visible in a narrow window.
 
 scroll-position-smoke.cjs selects a word far down a long note by double-click, then applies each » command: Strikethrough, Highlight, Inline code, list types, indent, divider and date. It also covers the link and table dialogs, Undo, and the Bold and Quote buttons. It asserts that the view does not move and that the formatting lands on the selected word. It also checks that the Outline scrolls to a far heading on the first click in Formatted view. Add `--desktop` for isolated development Electron.
 
