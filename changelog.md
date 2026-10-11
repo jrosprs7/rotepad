@@ -1,5 +1,15 @@
 # Rotepad changelog
 
+## 10/11/26 6:27 PM GMT+8 — Windows build 0.12.6 (not published)
+
+- Set the desktop package version to 0.12.6 for the dark dropdown lists, copied paragraph spacing and Preview copy fixes. Built Windows x64 NSIS and portable packages with `pnpm run dist` (pnpm 11.19.0 through corepack). The README download link still points at the published 0.12.4.
+- Rotepad-0.12.6-Setup.exe is 107,299,368 bytes, SHA-256 `8745e78a6ed4b0fa21d9b78dfe3bdcf2623f4a847092fa94215809e08718286e`. Rotepad-0.12.6-Windows.exe is 107,056,652 bytes, SHA-256 `4cf7d9872f2c51b7dc09bc7058281888daf84dee80c8f334128ba68f42511ee7`.
+
+| Area / expected behavior | Current verification | Result / limits |
+| --- | --- | --- |
+| Packaged payload | Extracted app.asar: version 0.12.6. main.cjs, preload.cjs, library-merge.cjs, markdown-store.cjs and the prepared Rotepad.html are byte-identical to the tested sources and include the themed option colors and copied-HTML spacing. shell-ui-smoke.cjs and data-safety-smoke.cjs --desktop passed after the bump | Passed. The full suites ran on this source before the version-only change. |
+| Installation | Not run | Manual: install over 0.12.x; in the dark theme open the paragraph-style and zoom dropdowns; copy lines into Word or email and check there are no gaps. |
+
 ## 10/11/26 6:22 PM GMT+8 — Review fixes: copied formatting, Preview copy, dark dropdowns
 
 A review of the 0.12.4–0.12.5 changes (right-click formatting, copy/cut, narrow sidebar), plus a user report:
