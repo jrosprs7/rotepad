@@ -1,5 +1,21 @@
 # Rotepad changelog
 
+## 10/11/26 6:22 PM GMT+8 — Review fixes: copied formatting, Preview copy, dark dropdowns
+
+A review of the 0.12.4–0.12.5 changes (right-click formatting, copy/cut, narrow sidebar), plus a user report:
+
+- **White dropdown lists in the dark theme (user report).** The toolbar's paragraph-style, font, zoom and line-spacing lists opened white with pale text. These selects have a transparent background, so Windows drew their option list on white while the options inherited the dark theme's light text. Options in every `select` now use the theme's `--paper`/`--ink` colors, and disabled options use `--muted`.
+- **Copied formatting regained paragraph gaps.** The 0.12.4 copy handler wrote bare `<p>` HTML. Chromium's own copy had given each paragraph `margin: 0` and `white-space: pre-wrap`, so Word or email would have shown a gap between lines and collapsed double spaces. Copied blocks now carry those styles, and a partial line is wrapped in a pre-wrap span.
+- **Preview view still copied double-spaced.** Copy in Preview now uses the same single-line-break text.
+- Checked and found no problem: cutting across checkbox items leaves no ☐/☑ and copies the item text; typed spaces are stored as ordinary spaces, so the copy carries no non-breaking spaces.
+- Not changed: copied text uses LF line breaks where Chromium's default used CRLF. Current Windows apps accept LF.
+
+| Area / expected behavior | Current verification | Result / limits |
+| --- | --- | --- |
+| Dropdown lists | shell-ui-smoke.cjs: in dark and light themes, the options of the paragraph-style, font, zoom, line-spacing and sort lists have an opaque background equal to `--paper` and text equal to `--ink` (computed style). A one-off screen capture of the native lists in development Electron (dark) showed dark lists with readable text | Passed. The native list is not captured by the automated check. |
+| Copied HTML | data-safety-smoke.cjs (Edge): margins zero and pre-wrap on copied paragraphs, double spaces kept, partial line wrapped; Preview copy gives `a  b\nsecond` | Passed. Pasting into Word or email clients was not exercised. |
+| Neighbors | All root tests; every browser smoke; the editor suites with `--desktop`; every desktop smoke (48 commands) | Passed on the final code. No build. |
+
 ## 10/11/26 6:06 PM GMT+8 — Windows build 0.12.5 (not published)
 
 - Set the desktop package version to 0.12.5 for hiding the sidebar in narrow windows. Built Windows x64 NSIS and portable packages with `pnpm run dist` (pnpm 11.19.0 through corepack). The README download link still points at the published 0.12.4.

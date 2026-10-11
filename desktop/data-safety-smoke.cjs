@@ -82,6 +82,14 @@ const selectedText=()=>page.evaluate(()=>getSelection().toString());
  await caretBefore('pressed');await page.keyboard.press('Shift+End');assert.equal((await copied()).plain,'pressed enter','a partial line copies as itself');checks++;
  await fresh();await paste('Hello this is rotepad.\ni pressed enter\n\nand the 3rd line');await expectSource('Hello this is rotepad.\ni pressed enter\n\nand the 3rd line','copied lines paste back unchanged');
 
+ // The copied HTML keeps Rotepad's spacing in apps that read HTML: no paragraph margins, spaces preserved, a partial line wrapped the same way.
+ await fresh();await page.keyboard.type('a  b');await page.keyboard.press('Enter');await page.keyboard.type('second');await page.keyboard.press('Control+A');copy=await copied();
+ assert.match(copy.html,/^<p style="[^"]*margin-top: 0px; margin-bottom: 0px; white-space: pre-wrap;[^"]*">a {2}b<\/p><p style="[^"]*margin-bottom: 0px[^"]*">second<\/p>$/);checks++;
+ await caretBefore('second');await page.keyboard.press('Shift+End');assert.equal((await copied()).html,'<span style="white-space:pre-wrap">second</span>');checks++;
+ // Preview view copies the same single-spaced lines.
+ const previewCopy=await page.evaluate(()=>{commitRich();setMode('preview');const pv=$('preview'),r=document.createRange();r.selectNodeContents(pv);getSelection().removeAllRanges();getSelection().addRange(r);const data=new DataTransfer();pv.dispatchEvent(new ClipboardEvent('copy',{clipboardData:data,bubbles:true,cancelable:true}));return data.getData('text/plain');});
+ assert.equal(previewCopy,'a  b\nsecond');await page.evaluate(()=>setMode('rich'));checks++;
+
  // F1/F2: typed # and ~~ stay literal through save/reopen; file names and typos are not auto-linked; web addresses still are.
  await fresh();await page.keyboard.type('# Not a heading');await page.keyboard.press('Enter');await page.keyboard.type('~~not struck~~');await page.keyboard.press('Enter');await page.keyboard.type('## two #tag');
  await expectSource('\\# Not a heading\n\\~\\~not struck\\~\\~\n\\## two #tag','literal # and ~~ escaped');await roundtrip();
@@ -98,5 +106,5 @@ const selectedText=()=>page.evaluate(()=>getSelection().toString());
  assert.equal(saved.text,'First\nSecond\n\\# literal');if(native){await page.evaluate(()=>flushLibrary());const index=JSON.parse(await fs.readFile(path.join(profile,'managed-notes.json'),'utf8'));assert.equal(await fs.readFile(index[saved.id].file,'utf8'),saved.text);}
  await page.reload();await page.waitForFunction(()=>typeof rich!=='undefined'&&rich.textContent.includes('literal'));assert.equal(await page.locator('#rich-editor h1').count(),0);assert.equal(await page.evaluate(()=>[...rich.childNodes].map(n=>n.textContent).join('\n')),'First\nSecond\n# literal');checks++;
  assert.deepEqual(errors,[]);
- console.log(`PASS ${checks} data-safety checks in ${native?'Electron':'Edge'}: Find keeps focus, selected list indent/outdent and Undo, code lines, task Backspace/Delete, empty markers, blank-note paste, single-spaced copy, literal # and ~~, file-name links and reload.`);
+ console.log(`PASS ${checks} data-safety checks in ${native?'Electron':'Edge'}: Find keeps focus, selected list indent/outdent and Undo, code lines, task Backspace/Delete, empty markers, blank-note paste, single-spaced copy (Formatted and Preview, HTML spacing), literal # and ~~, file-name links and reload.`);
 })().catch(error=>{console.error(error);process.exitCode=1;}).finally(async()=>{if(host)await host.close();});
