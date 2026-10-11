@@ -1,5 +1,15 @@
 # Rotepad changelog
 
+## 10/11/26 6:06 PM GMT+8 — Windows build 0.12.5 (not published)
+
+- Set the desktop package version to 0.12.5 for hiding the sidebar in narrow windows. Built Windows x64 NSIS and portable packages with `pnpm run dist` (pnpm 11.19.0 through corepack). The README download link still points at the published 0.12.4.
+- Rotepad-0.12.5-Setup.exe is 107,298,062 bytes, SHA-256 `d99993c881539ce76ca8a0bc2decf497f6c30adfbcc348a7e13fd66e46c4a673`. Rotepad-0.12.5-Windows.exe is 107,055,334 bytes, SHA-256 `04ed32bdfacfc31a11e68a2fbaa21e7f7ef9118dba4c77d2537e41fa929b591c`.
+
+| Area / expected behavior | Current verification | Result / limits |
+| --- | --- | --- |
+| Packaged payload | Extracted app.asar: version 0.12.5. main.cjs, preload.cjs, library-merge.cjs, markdown-store.cjs and the prepared Rotepad.html are byte-identical to the tested sources and include the narrow-window sidebar code. shell-ui-smoke.cjs and sidebar-smoke.cjs --desktop passed after the bump | Passed. The full suites ran on this source before the version-only change. |
+| Installation | Not run | Manual: install over 0.12.x, narrow the window below 900px and check that the sidebar hides, the button still opens it, and widening restores it. |
+
 ## 10/11/26 1:28 AM GMT+8 — Sidebar hides in narrow windows
 
 - At the user's request, the notes sidebar now hides itself when the window is narrower than 900px. The saved sidebar choice (`prefs.sidebar`) is not changed: in a narrow window the sidebar button shows or hides the sidebar temporarily without saving, and widening the window restores the saved choice. Narrowing again hides it. This applies to the browser version as well; on phone-width screens the sidebar now starts hidden and still opens over the note.
