@@ -76,8 +76,8 @@ See [storage details](docs/ARCHITECTURE.md#storage-and-recovery) before changing
 - [Desktop development](desktop/README.md): Electron builds and Windows packaging.
 - [Roadmap](ROADMAP.md): remaining issues and proposed work.
 - [2026-10-06 QA findings](docs/QA-2026-10-06.md): open bugs from exploratory browser testing, with reproductions.
-- [Session handoff 2026-10-09](docs/HANDOFF-2026-10-09.md): current state, local build/test setup and open items for the next session.
+- [Session handoff 2026-10-17](docs/HANDOFF-2026-10-17.md): current state, local build/test setup and open items for the next session.
 - [Changelog](changelog.md): completed changes and historical verification.
-- [Archived handoff](docs/archive/HANDOFF-2026-09-20.md) and [0.5.1 QA report](docs/archive/QA-0.5.1.md): historical context, not current instructions.
+- Archived handoffs ([2026-10-09](docs/archive/HANDOFF-2026-10-09.md), [2026-09-20](docs/archive/HANDOFF-2026-09-20.md)) and [0.5.1 QA report](docs/archive/QA-0.5.1.md): historical context, not current instructions.
 
 Embedded Iosevka fonts and their license are included in [FONT-LICENSE.txt](FONT-LICENSE.txt). No font installation or network access is required to use them.

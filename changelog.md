@@ -1,5 +1,11 @@
 # Rotepad changelog
 
+## 10/17/26 12:42 AM GMT+8 — Session handoff and Markdown findings in the roadmap
+
+- Added a [session handoff](docs/HANDOFF-2026-10-17.md) with the current state (including the uncommitted Always on top work), the local build and test setup, and open items. Moved the 2026-10-09 handoff to [docs/archive](docs/archive/HANDOFF-2026-10-09.md) and updated its relative links, the README list and the earlier changelog link.
+- Recorded the 2026-10-11 Markdown check in the [roadmap](ROADMAP.md): Formatted-view edits rewrite `***bold italic***`, table alignment rows and links with titles. Also listed the Markdown that is shown as plain text but not supported (images, nested quotes, table alignment and others) for the user to prioritize.
+- Documentation only; no application tests were needed. Relative links in the changed documents resolve.
+
 ## 10/11/26 8:29 PM GMT+8 — Always on top
 
 - At the user's request, the desktop app has **Menu → View → Always on top**. A tick shows it is on. It applies to every Rotepad window, including windows opened later, and is remembered after restart. Choosing it again turns it off everywhere.
@@ -92,7 +98,7 @@ A review of the 0.12.4–0.12.5 changes (right-click formatting, copy/cut, narro
 
 - Set the desktop package version to 0.12.3 for saving back to opened files. Built Windows x64 NSIS and portable packages with `pnpm run dist` (pnpm 11.19.0 through corepack). The README download link still points at the published 0.12.2.
 - Rotepad-0.12.3-Setup.exe is 107,295,970 bytes, SHA-256 `4ede0f6ffd180032b05ac79b0ab5be3055ac50d8c69ff4881a6361f5a6256f76`. Rotepad-0.12.3-Windows.exe is 107,053,237 bytes, SHA-256 `3a6615927a7e173ae93ef31a76b7f6a4e055009b2cfa2d31287b561664a7d1cc`.
-- Added a [session handoff](docs/HANDOFF-2026-10-09.md) with the current state, the local build and test setup, and open items.
+- Added a [session handoff](docs/archive/HANDOFF-2026-10-09.md) with the current state, the local build and test setup, and open items.
 
 | Area / expected behavior | Current verification | Result / limits |
 | --- | --- | --- |

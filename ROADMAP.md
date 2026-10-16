@@ -13,7 +13,11 @@ These findings remain unresolved in the documentation. Reproduce against the cur
 - [ ] Restoring the last deleted note should reopen it, including the same-active-ID case.
 - [ ] Preserve an empty workspace after all notes are moved to Trash and the app restarts.
 - [ ] Creating a note while viewing Trash should switch the sidebar to Open/Library.
-- [ ] Review combined bold/italic parsing and consecutive formatting shortcuts separately from fonts. The existing parser leaves literal asterisks in `***text***`; consecutive Ctrl+B/Ctrl+I scenarios during font checks also did not retain both styles and need an isolated interaction review. The combined font face itself loads and renders correctly.
+- [ ] Review combined bold/italic parsing and consecutive formatting shortcuts separately from fonts. The existing parser leaves literal asterisks in `***text***`, and any edit in Formatted view then saves it as `**\*text**\*` (checked 2026-10-11); consecutive Ctrl+B/Ctrl+I scenarios during font checks also did not retain both styles and need an isolated interaction review. The combined font face itself loads and renders correctly.
+
+- [ ] Formatted-view edits rewrite some Markdown (checked 2026-10-11): table alignment rows (`:---`, `:---:`, `---:`) are saved as `---`, and `[site](https://example.com "Title")` is saved as `\[site\]([https://example.com](https://example.com/) "Title")`. Markdown-view and `.txt` editing are unaffected.
+
+- [ ] Decide which unsupported Markdown to add (all currently shown as plain text, with the text kept): table alignment (and GitHub's short `:-:` delimiter cells), images (needs an offline decision: remote images require a network), nested quotes `>>`, link titles, `<https://…>` links, reference links, footnotes, indented code, two-space line breaks, inline HTML and math. Literal `---`, setext headings, `_text_` and one-paragraph-per-line are deliberate.
 
 - [ ] Triage the remaining [2026-10-06 exploratory QA findings](docs/QA-2026-10-06.md). Its data-loss items (D1–D7) and the `#`/`~~` and file-name link changes (F1–F2) are fixed. Next: format changes on reload (F3–F12), caret after list commands and Undo, Markdown-view Outline scrolling with wrapped lines, large-paste performance, and backup/Trash/keyboard issues.
 
