@@ -1,5 +1,19 @@
 # Rotepad changelog
 
+## 10/17/26 1:10 AM GMT+8 — Fast large paste in Formatted view
+
+- A tester reported that pasting a lot of text was slow compared with Notepad. Measured in headless Edge before the fix: 100 lines took 0.4 s, 400 lines 5.4 s and 2,000 lines 144 s, rising with the square of the line count.
+- **Cause:** Chromium's `insertText` fires an `input` event for every pasted line and line break, and each one re-converted, re-serialized, re-rendered and saved the whole note. `insertText` itself also slows with every line it adds.
+- **Fix (Rotepad.html):** the paste handler now skips the per-event work and converts and saves once. When the paste goes into a plain paragraph or an empty note, the lines are inserted as paragraphs in one step. Headings, list items, quotes, code, table cells and formatted text still use `insertText`. See the [architecture](docs/ARCHITECTURE.md).
+- **After:** 100 lines take 12 ms, 400 lines 18 ms, 2,000 lines 76 ms and 10,000 lines 0.42 s. Markdown view was already fast (a 2,000-line paste took 0.17 s).
+- **Still slow:** typing in a very large Formatted note (about 50 ms per key at 2,000 lines). This is added to the [roadmap](ROADMAP.md).
+
+| Area / expected behavior | Current verification | Result / limits |
+| --- | --- | --- |
+| Paste result unchanged | New desktop/large-paste-smoke.cjs compares each paste with the previous `insertText` result. It checks Markdown, visible text, caret, active styles and Undo across 18 positions × 8 texts, with auto-Markdown off and on (288 scenarios). Before the test existed, the same matrix was run against the previous Rotepad.html: no differences | Passed in Edge and development Electron. These are synthetic paste events, not a physical Ctrl+V. |
+| Speed and saving | The same script pastes 5,000 lines into a blank note. It requires one save, every line kept, the caret at the end and under 3 s (0.42 s in Edge). With `--desktop` it also checks the managed Markdown file | Passed. Timings are from headless runs on this PC. |
+| Neighbors | All root tests; every browser smoke; the editor suites with `--desktop`; every desktop smoke (51 commands, including always-on-top-smoke.cjs on the uncommitted Always on top work) | Passed. No build. |
+
 ## 10/17/26 12:42 AM GMT+8 — Session handoff and Markdown findings in the roadmap
 
 - Added a [session handoff](docs/HANDOFF-2026-10-17.md) with the current state (including the uncommitted Always on top work), the local build and test setup, and open items. Moved the 2026-10-09 handoff to [docs/archive](docs/archive/HANDOFF-2026-10-09.md) and updated its relative links, the README list and the earlier changelog link.

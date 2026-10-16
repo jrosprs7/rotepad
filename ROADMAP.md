@@ -19,7 +19,9 @@ These findings remain unresolved in the documentation. Reproduce against the cur
 
 - [ ] Decide which unsupported Markdown to add (all currently shown as plain text, with the text kept): table alignment (and GitHub's short `:-:` delimiter cells), images (needs an offline decision: remote images require a network), nested quotes `>>`, link titles, `<https://…>` links, reference links, footnotes, indented code, two-space line breaks, inline HTML and math. Literal `---`, setext headings, `_text_` and one-paragraph-per-line are deliberate.
 
-- [ ] Triage the remaining [2026-10-06 exploratory QA findings](docs/QA-2026-10-06.md). Its data-loss items (D1–D7) and the `#`/`~~` and file-name link changes (F1–F2) are fixed. Next: format changes on reload (F3–F12), caret after list commands and Undo, Markdown-view Outline scrolling with wrapped lines, large-paste performance, and backup/Trash/keyboard issues.
+- [ ] Triage the remaining [2026-10-06 exploratory QA findings](docs/QA-2026-10-06.md). Its data-loss items (D1–D7) and the `#`/`~~` and file-name link changes (F1–F2) are fixed. Next: format changes on reload (F3–F12), caret after list commands and Undo, Markdown-view Outline scrolling with wrapped lines, and backup/Trash/keyboard issues. Large-paste speed is fixed (see the changelog).
+
+- [ ] Typing in a very large Formatted note is slow: every keystroke re-detects links across the whole note, re-renders the hidden preview and re-serializes the note. Measured 2026-10-17 in headless Edge: about 50 ms per key at 2,000 lines and 230 ms at 10,000 lines; a 5,000-line note full of web addresses took about 650 ms per key.
 
 Original reproductions are in the [0.5.1 QA report](docs/archive/QA-0.5.1.md). Its closed-note printing issue was resolved for desktop in 0.7.0 and is recorded in the changelog.
 

@@ -184,7 +184,7 @@ document.addEventListener('keydown',e=>writingArea.classList.toggle('follow-link
 document.addEventListener('keyup',e=>writingArea.classList.toggle('follow-links',e.ctrlKey||e.metaKey));
 window.addEventListener('blur',()=>writingArea.classList.remove('follow-links'));
 const richPane=document.createElement('section');richPane.id='rich-pane';richPane.className='pane';richPane.setAttribute('aria-label','Formatted editor');richPane.innerHTML='<div class="pane-label"><span>Write</span><span>Format as you type · Ctrl+click links</span></div><div id="rich-editor" class="preview" contenteditable="true" role="textbox" aria-label="Write your note" aria-multiline="true" spellcheck="true"></div>';document.querySelector('.workspace').prepend(richPane);
-const rich=$('rich-editor');let richRange=null,richHistory=[],historyIndex=-1,composing=false;
+const rich=$('rich-editor');let richRange=null,richHistory=[],historyIndex=-1,composing=false,pastingText=false;
 const key='rotepad.draft.v1';let mode='rich',selection=[0,0],savedText='',storageOK=true;
 const escapeHTML=s=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function safeURL(s){try{const u=new URL(s);return ['https:','http:'].includes(u.protocol)?u.href:null}catch{return null}}
@@ -343,10 +343,24 @@ document.querySelectorAll('.format button').forEach(b=>b.addEventListener('mouse
 document.addEventListener('selectionchange',()=>{if(mode==='rich'&&!$('link-dialog').open)rememberRange()});
 rich.addEventListener('compositionstart',()=>composing=true);
 rich.addEventListener('compositionend',()=>{composing=false;autoFormatRich();commitRich()});
-rich.addEventListener('input',()=>{if(composing)return;autoFormatRich();commitRich()});
+rich.addEventListener('input',()=>{if(composing||pastingText)return;autoFormatRich();commitRich()});
 rich.addEventListener('beforeinput',e=>{if(e.inputType==='historyUndo'||e.inputType==='historyRedo'){e.preventDefault();undoRich(e.inputType==='historyRedo')}});
 rich.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&['z','y'].includes(e.key.toLowerCase())){e.preventDefault();undoRich(e.key.toLowerCase()==='y'||e.shiftKey)}});
-rich.addEventListener('paste',e=>{e.preventDefault();document.execCommand('insertText',false,e.clipboardData.getData('text/plain'));autoFormatRich();commitRich()});
+// insertText fires an input event per pasted line and per line break; convert, serialize and save once for the whole paste.
+// Chromium's multiline insertText also slows with every line, so text pasted into a plain paragraph goes in as the same paragraphs in one insertHTML.
+function plainPasteSpot(node){if(node===rich)return !rich.firstElementChild;const block=node.nodeType===3?node.parentElement:node;return block?.parentElement===rich&&/^(P|DIV)$/.test(block.tagName)&&(node.nodeType===3||[...block.children].every(child=>child.tagName==='BR'))}
+function pastePlainText(text){
+ const s=getSelection(),lines=text.split(/\r\n|\r|\n/);
+ if(lines.length<2||!s.rangeCount||!plainPasteSpot(s.anchorNode)||!plainPasteSpot(s.focusNode)||['bold','italic','underline','strikeThrough'].some(command=>document.queryCommandState(command))){document.execCommand('insertText',false,text);return}
+ if(!s.isCollapsed)document.execCommand('delete');
+ // Leading and trailing blank lines are paragraph breaks around the inserted text, as insertText makes them.
+ let first=0,last=lines.length;while(first<last-1&&!lines[first])first++;while(last>first+1&&!lines[last-1])last--;
+ for(let i=0;i<first;i++)document.execCommand('insertParagraph');
+ const middle=lines.slice(first,last);
+ if(middle.length>1)document.execCommand('insertHTML',false,middle.map(line=>'<p>'+(line?escapeHTML(line):'<br>')+'</p>').join(''));else if(middle[0])document.execCommand('insertText',false,middle[0]);
+ for(let i=last;i<lines.length;i++)document.execCommand('insertParagraph');
+}
+rich.addEventListener('paste',e=>{e.preventDefault();pastingText=true;try{pastePlainText(e.clipboardData.getData('text/plain'))}finally{pastingText=false}autoFormatRich();commitRich();queueMicrotask(updateFormatting)});
 rich.addEventListener('drop',e=>e.preventDefault());
 rich.addEventListener('click',e=>{const a=e.target.closest('a');if(a){e.preventDefault();if(e.ctrlKey||e.metaKey){const href=safeURL(a.getAttribute('href'));if(href)window.open(href,'_blank','noopener,noreferrer')}}});
 document.execCommand('defaultParagraphSeparator',false,'p');
@@ -559,7 +573,7 @@ function updateFormatting(){const s=getSelection(),inside=mode==='rich'&&s.range
  paragraphStyle.disabled=mode==='preview';if(inside){const styles=nodes.map(n=>{const el=(n.nodeType===3?n.parentElement:n)?.closest?.('h1,h2,h3,h4,h5,h6,blockquote,p,li,div');return el?.closest('blockquote')?'blockquote':/^H[1-6]$/.test(el?.tagName||'')?el.tagName.toLowerCase():'p'});paragraphStyle.value=styles.length&&styles.every(x=>x===styles[0])&&['p','h1','h2','h3','blockquote'].includes(styles[0])?styles[0]:'mixed'}else if(mode==='write'||mode==='split'){const line=editor.value.slice(0,editor.selectionStart).split('\n').at(-1);const h=/^(#{1,3})\s/.exec(line);paragraphStyle.value=h?'h'+h[1].length:/^>/.test(line)?'blockquote':'p'}
  $('clear-format').disabled=mode==='preview'||(mode==='rich'?(!inside||s.isCollapsed):editor.selectionStart===editor.selectionEnd);
 }
-document.addEventListener('selectionchange',()=>{if(document.activeElement===rich||document.activeElement===editor)updateFormatting()});for(const surface of [rich,editor]){surface.addEventListener('keyup',updateFormatting);surface.addEventListener('mouseup',updateFormatting);surface.addEventListener('input',()=>queueMicrotask(updateFormatting))}
+document.addEventListener('selectionchange',()=>{if(document.activeElement===rich||document.activeElement===editor)updateFormatting()});for(const surface of [rich,editor]){surface.addEventListener('keyup',updateFormatting);surface.addEventListener('mouseup',updateFormatting);surface.addEventListener('input',()=>{if(!pastingText)queueMicrotask(updateFormatting)})}
 document.querySelector('.toolbar').addEventListener('click',()=>queueMicrotask(updateFormatting));document.querySelectorAll('button[data-mode]').forEach(b=>b.addEventListener('click',updateFormatting));
 for(const menu of [fileMenu.menu,viewMenu.menu,helpMenu.menu,$('more-format')]){menu.addEventListener('toggle',()=>{if(menu.open){rememberRange();for(const other of [fileMenu.menu,viewMenu.menu,helpMenu.menu,$('more-format')])if(other!==menu)other.open=false}});menu.addEventListener('keydown',e=>{if(e.key==='Escape'){menu.open=false;menu.querySelector('summary').focus()}});menu.addEventListener('click',e=>{if(e.target.closest('button'))menu.open=false})}
 document.addEventListener('pointerdown',e=>{for(const menu of [fileMenu.menu,viewMenu.menu,helpMenu.menu,$('more-format')])if(!menu.contains(e.target))menu.open=false});
