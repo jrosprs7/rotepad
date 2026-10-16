@@ -121,6 +121,7 @@ node desktop/note-tabs-smoke.cjs
 node desktop/shell-ui-smoke.cjs
 node desktop/context-menu-smoke.cjs
 node desktop/linked-files-smoke.cjs
+node desktop/always-on-top-smoke.cjs
 ```
 
 | Script in desktop/ | Main area |
@@ -136,6 +137,7 @@ node desktop/linked-files-smoke.cjs
 | print-preview-smoke.cjs | Preview, PDF export, mocked printing, errors and empty-workspace guard |
 | context-menu-smoke.cjs | Right-click menu on note text: items and enabled states; Copy/Cut/Paste/Undo/Redo/Select All acting on the note; formatting items applying Highlight, Strikethrough, Bold and Clear formatting (with Undo) in Formatted view and Highlight in Markdown view, and absent for a caret or the Find field; typed lines copied and cut one line break apart; link open (mocked) and copy; Markdown view; tabs keep note options; plain chrome shows none. Spelling layout uses a supplied misspelling event because the spellchecker reported none in development Electron. Native menus are captured in the main process, not clicked. The system clipboard is used, and its text is saved and restored |
 | linked-files-smoke.cjs | Write-back to opened files with real files in a disposable profile: an exact round trip of a mixed literal `.txt` corpus (direct and after editor re-serialization); no write before an edit; BOM, CRLF and untouched lines kept; Ctrl+S and autosave; plain text for added bold; outside change with Cancel (unlink) and OK (overwrite); Markdown write-back; a missing file not recreated; non-UTF-8 left unchanged; close flush; restart without a prompt. Dialogs are mocked |
+| always-on-top-smoke.cjs | View → Always on top through the real menu: tick, every window including a new one, turning it off from another window, the settings file keeping the save folder (mocked folder picker), non-boolean values rejected, and restart with it on and off. It checks Electron's window flag; it does not verify stacking against other apps |
 | close-smoke.cjs | Delegates to library-smoke.cjs; does not need a duplicate run |
 
 Storage changes should include both library-smoke.cjs and markdown-files-smoke.cjs. Printing and layout changes need the corresponding desktop checks.

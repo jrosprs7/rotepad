@@ -4,7 +4,7 @@ const {pathToFileURL}=require('node:url'),{randomUUID,createHash}=require('node:
 const {MarkdownStore}=require('./markdown-store.cjs');
 const {mergeDesktopLibrary}=require('./library-merge.cjs');
 const windows=new Map(),busy=new Set();
-let links=Object.create(null),linksPath,settingsPath,saveFolder,libraryPath,libraryData=null,markdownStore;
+let links=Object.create(null),linksPath,settingsPath,saveFolder,alwaysOnTop=false,storedSettings={},settingsQueue=Promise.resolve(),libraryPath,libraryData=null,markdownStore;
 let libraryQueue=Promise.resolve(),linksQueue=Promise.resolve(),startupPaths=[];
 // Files the user opened stay linked to their note: saves write back there (exports in `links` are separate copies).
 let synced=Object.create(null),syncedPath,syncedQueue=Promise.resolve();const syncing=new Map();
@@ -42,13 +42,15 @@ function showContextMenu(win,params){
  if(link)items.push(...(items.length?[{type:'separator'}]:[]),{label:'Open link',click:()=>external(link)},{label:'Copy link address',click:()=>clipboard.writeText(link)});
  if(items.length)Menu.buildFromTemplate(items).popup({window:win});
 }
+// Settings writes are serialized and keep every stored key; the default save folder is never written unless chosen.
+function writeSettings(change){const operation=settingsQueue.catch(()=>{}).then(async()=>{const next={...storedSettings,...change};await atomicWrite(settingsPath,JSON.stringify(next));storedSettings=next;});settingsQueue=operation;return operation;}
 function broadcast(channel,value,except){for(const state of windows.values())if(state!==except&&state.ready&&!state.win.isDestroyed())state.win.webContents.send(channel,value);}
 async function createWindow(paths=[],initial=false){
  let slot=1;while([...windows.values()].some(s=>s.slot===slot))slot++;
  const win=new BrowserWindow({width:1250,height:850,minWidth:650,minHeight:450,title:'Rotepad',show:false,autoHideMenuBar:true,...(process.platform==='win32'?{titleBarStyle:'hidden',titleBarOverlay:{height:34,color:'#d6d6d3',symbolColor:'#0e0e0e'}}:{}),webPreferences:{preload:path.join(__dirname,'preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true}});
  const state={win,slot,initial,initialized:false,ready:false,paths,pending:new Map(),conflictIds:new Map(),pickerBusy:false,printBusy:false,printPreview:null,closePending:false,allowClose:false};
  windows.set(win.webContents.id,state);const id=win.webContents.id;
- win.setIcon(path.join(__dirname,'app','rotepad.ico'));win.removeMenu();
+ win.setIcon(path.join(__dirname,'app','rotepad.ico'));win.removeMenu();win.setAlwaysOnTop(alwaysOnTop);
  win.on('close',event=>{if(state.allowClose)return;event.preventDefault();if(!state.ready||state.closePending||state.pickerBusy||state.printBusy||busy.size)return;state.closePending=true;win.webContents.send('request-close');});
  win.on('closed',()=>windows.delete(id));
  win.webContents.setWindowOpenHandler(({url})=>{external(url);return {action:'deny'};});
@@ -63,7 +65,7 @@ else app.whenReady().then(async()=>{
  try{libraryData=await fs.readFile(libraryPath,'utf8');validateLibrary(libraryData);}catch(error){if(error.code!=='ENOENT'){dialog.showErrorBox('Could not load notes','Rotepad could not read its saved library. Your files have been left untouched.\n'+error.message);app.quit();return;}}
  linksPath=path.join(app.getPath('userData'),'note-files.json');settingsPath=path.join(app.getPath('userData'),'desktop-settings.json');
  saveFolder=!app.isPackaged&&process.env.ROTEPAD_TEST_DATA?path.join(app.getPath('userData'),'Documents','Rotepad Docs'):path.join(app.getPath('documents'),'Rotepad Docs');
- try{const settings=JSON.parse(await fs.readFile(settingsPath,'utf8'));if(typeof settings.saveFolder==='string'&&path.isAbsolute(settings.saveFolder))saveFolder=settings.saveFolder;}catch{}
+ try{const settings=JSON.parse(await fs.readFile(settingsPath,'utf8'));if(typeof settings.saveFolder==='string'&&path.isAbsolute(settings.saveFolder))saveFolder=storedSettings.saveFolder=settings.saveFolder;if(settings.alwaysOnTop===true)alwaysOnTop=storedSettings.alwaysOnTop=true;}catch{}
  try{for(const [id,file] of Object.entries(JSON.parse(await fs.readFile(linksPath,'utf8'))))if(typeof file==='string'&&path.isAbsolute(file))links[id]=file;}catch{}
  syncedPath=path.join(app.getPath('userData'),'linked-files.json');
  try{for(const [id,entry] of Object.entries(JSON.parse(await fs.readFile(syncedPath,'utf8'))))if(typeof entry?.file==='string'&&path.isAbsolute(entry.file)&&['md','txt'].includes(entry.kind)&&['\n','\r\n'].includes(entry.eol)&&typeof entry.hash==='string')synced[id]={file:entry.file,kind:entry.kind,bom:entry.bom===true,eol:entry.eol,hash:entry.hash};}catch{}
@@ -88,7 +90,9 @@ else app.whenReady().then(async()=>{
  ipcMain.handle('close-finish',(event,approved)=>{const state=check(event);if(!state.closePending)return;state.closePending=false;if(approved===true){state.allowClose=true;state.win.close();}else void sendQueued(state);});
  ipcMain.handle('note-files',event=>{check(event);return Object.entries(links).map(([id,file])=>({id,name:path.basename(file)}));});
  ipcMain.handle('note-show-in-folder',async(event,id)=>{check(event);if(typeof id!=='string')throw Error('Invalid note');await libraryQueue;if(!libraryData||!validateLibrary(libraryData).notes.some(note=>note.id===id))throw Error('Note not found');const record=markdownStore.records[id];if(!record)return {error:'This empty note has no file yet. Start writing or give it a name first.'};if(!(await fs.stat(record.file)).isFile())throw Error('The note file could not be found.');shell.showItemInFolder(record.file);return {ok:true};});
- ipcMain.handle('desktop-settings',event=>{check(event);return {saveFolder};});
+ ipcMain.handle('desktop-settings',event=>{check(event);return {saveFolder,alwaysOnTop};});
+ // Always on top is app-wide: every window follows it, and it is kept with the other desktop settings.
+ ipcMain.handle('window-on-top',(event,value)=>{check(event);if(typeof value!=='boolean')throw Error('Invalid always-on-top setting');return writeSettings({alwaysOnTop:value}).then(()=>{alwaysOnTop=value;for(const state of windows.values())if(!state.win.isDestroyed())state.win.setAlwaysOnTop(value);broadcast('settings-changed',{saveFolder,alwaysOnTop});return {saveFolder,alwaysOnTop};});});
  ipcMain.handle('print-preview',async(event,options)=>{
   const state=check(event);if(state.printBusy)throw Error('Please wait for the current print operation.');
   if(!options||!['A4','Letter','Legal','A5'].includes(options.pageSize)||typeof options.landscape!=='boolean')throw Error('Invalid paper settings');
@@ -103,7 +107,7 @@ else app.whenReady().then(async()=>{
    return await new Promise((resolve,reject)=>win.webContents.print({...preview.settings,silent:false,printBackground:true},(success,reason)=>{if(success)resolve({printed:true});else if(/cancel/i.test(reason))resolve({canceled:true});else reject(Error(reason||'Printing failed.'));}));
   }finally{state.printBusy=false;state.pickerBusy=false;}
  });
- ipcMain.handle('choose-folder',async event=>{const state=check(event);if(state.pickerBusy)return null;state.pickerBusy=true;try{const result=await dialog.showOpenDialog(state.win,{title:'Default save folder',defaultPath:saveFolder,properties:['openDirectory','createDirectory']});if(result.canceled)return null;const chosen=result.filePaths[0];await atomicWrite(settingsPath,JSON.stringify({saveFolder:chosen}));saveFolder=chosen;broadcast('settings-changed',{saveFolder});return {saveFolder};}finally{state.pickerBusy=false;}});
+ ipcMain.handle('choose-folder',async event=>{const state=check(event);if(state.pickerBusy)return null;state.pickerBusy=true;try{const result=await dialog.showOpenDialog(state.win,{title:'Default save folder',defaultPath:saveFolder,properties:['openDirectory','createDirectory']});if(result.canceled)return null;const chosen=result.filePaths[0];await writeSettings({saveFolder:chosen});saveFolder=chosen;broadcast('settings-changed',{saveFolder,alwaysOnTop});return {saveFolder,alwaysOnTop};}finally{state.pickerBusy=false;}});
  ipcMain.handle('desktop-ready',event=>{const state=check(event);state.ready=true;void sendQueued(state);});
  ipcMain.handle('note-save',async(event,data)=>{
   const state=check(event);if(!data||typeof data.id!=='string'||typeof data.text!=='string'||typeof data.name!=='string')throw Error('Invalid note');if(busy.has(data.id)||state.pickerBusy)return null;busy.add(data.id);

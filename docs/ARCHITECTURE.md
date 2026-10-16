@@ -77,7 +77,7 @@ The normal profile is %APPDATA%/Rotepad:
 - library.json: metadata, preferences, revisions, workspace and recovery text.
 - managed-notes.json: stable note-ID-to-file mapping.
 - library-before-markdown.json: retained pre-migration library snapshot.
-- desktop-settings.json: default notes folder.
+- desktop-settings.json: the chosen default notes folder and Always on top. main.cjs serializes writes through writeSettings, which keeps every stored key, so changing one setting never drops the other; the default folder is not written unless chosen.
 - note-files.json: older import/export associations, separate from managed-file mapping
 - linked-files.json: notes linked to the file they were opened from (path, md/txt kind, BOM, line ending, SHA-256 of the last read or written bytes).
 
@@ -121,6 +121,8 @@ JSON backups use rotepad-backup version 1 and include revisions and Trash; resto
 ## Security and printing
 
 Electron runs with nodeIntegration disabled, contextIsolation enabled and sandbox enabled. One main process retains the single-instance lock and owns a registry of BrowserWindows. New window and subsequent application launches create registered windows within that process; file launches open in the new window. The last closed window ends the process. main.cjs validates each IPC sender against the registry, main frame and app URL. The preload exposes specific operations rather than unrestricted filesystem access. Show in File Explorer resolves a note ID through the managed mapping instead of accepting renderer-supplied paths.
+
+Always on top is an app-wide main-process setting. The `window-on-top` IPC accepts only a boolean, saves it, applies setAlwaysOnTop to every window, and broadcasts it with `settings-changed`; new windows apply it at creation. integration.js adds the View menu item and reflects the setting as aria-pressed.
 
 main.cjs builds the right-click menu from each window's `context-menu` event (Electron shows none by default). Editable targets get spelling suggestions and Add to dictionary when Chromium reports a misspelled word, followed by Undo/Redo, Cut/Copy/Paste and Select All. Undo/Redo send Ctrl+Z/Ctrl+Y input events so the app's own history handles them; Electron's native undo is not used. Paste follows the page's plain-text paste handler. Links offer Open link (through the existing http(s)-only `external` opener) and Copy link address. Pages that cancel `contextmenu`, such as note tabs, keep their own behavior. When the target is the formatted editor or the Markdown textarea (`formControlType` none/text-area) and text is selected, the menu adds Bold, Italic, Underline, Strikethrough, Highlight and Clear formatting. These send a fixed `context-format` type to the renderer; preload passes only allowlisted types, and integration.js applies them with the toolbar's format, extraFormat and clearSelectedFormatting while the note editor has focus, so history and Markdown serialization match the toolbar. Copy and cut in Formatted view, and copy in Preview, write their own clipboard data: text/plain with one line break per block (Chromium's default puts a blank line between paragraphs) and the selection's HTML with zero block margins and `white-space:pre-wrap` (a partial line is wrapped in a pre-wrap span), matching the inline styles Chromium's own copy added; cut then deletes through execCommand after a Cut text savepoint. Options in every `select` take `--paper`/`--ink`, because Windows draws the list of a transparent toolbar select on white.
 

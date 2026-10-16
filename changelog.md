@@ -1,5 +1,17 @@
 # Rotepad changelog
 
+## 10/11/26 8:29 PM GMT+8 — Always on top
+
+- At the user's request, the desktop app has **Menu → View → Always on top**. A tick shows it is on. It applies to every Rotepad window, including windows opened later, and is remembered after restart. Choosing it again turns it off everywhere.
+- **Main process:** a new `window-on-top` IPC accepts only a boolean, saves the setting, applies `setAlwaysOnTop` to every window and broadcasts it with `settings-changed`. New windows apply it when created.
+- **Settings file:** desktop-settings.json now holds the chosen notes folder and Always on top. Writes go through one serialized `writeSettings` that keeps every stored key. Before this, choosing a save folder rewrote the file with the folder only, which would have dropped the new setting. The default notes folder is still not written unless chosen.
+- Added desktop/always-on-top-smoke.cjs; updated the README, architecture and testing guide.
+
+| Area / expected behavior | Current verification | Result / limits |
+| --- | --- | --- |
+| Always on top | always-on-top-smoke.cjs (8 checks) in development Electron through the real Menu → View clicks: tick and window flag on, a new window opens on top, turning it off from the second window releases both and updates the first window's tick, a save-folder change (mocked picker) keeps both keys, a non-boolean value is rejected, restart with it on and off. A screenshot showed "✓ Always on top" in the View menu | Passed. It checks Electron's window flag; staying above other apps was not observed on screen. |
+| Neighbors | All root tests; every browser smoke; the editor suites with `--desktop`; every desktop smoke (49 commands, including smoke.cjs for the save folder) | Passed. No build. |
+
 ## 10/11/26 6:27 PM GMT+8 — Windows build 0.12.6 (not published)
 
 - Set the desktop package version to 0.12.6 for the dark dropdown lists, copied paragraph spacing and Preview copy fixes. Built Windows x64 NSIS and portable packages with `pnpm run dist` (pnpm 11.19.0 through corepack). The README download link still points at the published 0.12.4.

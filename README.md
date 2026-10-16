@@ -39,6 +39,8 @@ On desktop, notes automatically save to managed Markdown files. Ctrl+S flushes p
 
 Open multiple desktop windows with **Menu → File → New window**, **Ctrl+Shift+N**, or by launching Rotepad again. Each additional window starts a new blank note and shares the same Library. Open an existing note from Library to work on it alongside another note. Windows keep their own open notes, active note, view and cursor; closing one window leaves the others running. Changes appear in other windows automatically. If simultaneous edits conflict, Rotepad keeps a separate conflict copy and shows a status message. Restart restores one window and recovers pending drafts from the others; it does not reopen the previous number of windows.
 
+To keep Rotepad above other apps, choose **Menu → View → Always on top**; a tick shows it is on. It applies to every Rotepad window, including new ones, and is remembered after restart. Choose it again to turn it off. This is desktop-only.
+
 Opening a `.md` or `.txt` file (double-click, Open with, or Import Markdown…) keeps the note linked to that file. Autosave and Ctrl+S save your edits back to it, and the status bar shows "Also saves to" with the file name. Rotepad also keeps its own library copy, which holds history and recovery.
 - **Text files:** a `.txt` file opens as literal text, so lines such as `# TODO` or `1. step` stay exactly as typed. Rotepad keeps the file's line endings and byte-order mark. Formatting you add (bold, lists) can't be stored in a `.txt` file, so only the text is saved there.
 - **Markdown files:** a `.md` file is saved as Markdown.

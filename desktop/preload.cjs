@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld('rotDesktop', {
   printOutput: data => ipcRenderer.invoke('print-output', data),
   settings: () => ipcRenderer.invoke('desktop-settings'),
   chooseFolder: () => ipcRenderer.invoke('choose-folder'),
+  setAlwaysOnTop: value => ipcRenderer.invoke('window-on-top', value),
   ready: () => ipcRenderer.invoke('desktop-ready'),
   libraryInitial: () => ipcRenderer.sendSync('library-initial'),
   librarySave: (text,base) => ipcRenderer.invoke('library-save',{text,base}),

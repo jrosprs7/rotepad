@@ -38,5 +38,11 @@ $('choose-save-folder').onclick=async()=>{try{const settings=await window.rotDes
 let openQueue=Promise.resolve();window.rotDesktop.onOpen(file=>{openQueue=openQueue.then(()=>openDesktopNote(file)).catch(error=>alert('Could not open note: '+error.message));});
 // Right-click formatting: applied with the toolbar's own commands, and only while the note editor has the selection.
 window.rotDesktop.onContextFormat(type=>{const target=document.activeElement;if(target!==editor&&!rich.contains(target))return;if(type==='clear')clearSelectedFormatting();else if(type==='strike'||type==='highlight')extraFormat(type);else format(type);});
+// Always on top (View menu) applies to every window and is remembered; the main process owns the setting.
+const onTopButton=document.createElement('button');onTopButton.id='always-on-top';onTopButton.textContent='Always on top';onTopButton.title='Keep Rotepad windows above other apps';onTopButton.setAttribute('aria-pressed','false');viewMenu.panel.append(onTopButton);
+document.head.insertAdjacentHTML('beforeend','<style>#always-on-top[aria-pressed=true]::before{content:"✓ "}</style>');
+const showOnTop=settings=>onTopButton.setAttribute('aria-pressed',String(settings.alwaysOnTop===true));
+window.rotDesktop.settings().then(showOnTop);window.rotDesktop.onSettings(showOnTop);
+onTopButton.onclick=async()=>{viewMenu.menu.open=false;try{showOnTop(await window.rotDesktop.setAlwaysOnTop(onTopButton.getAttribute('aria-pressed')!=='true'));}catch(error){alert('Could not change Always on top. '+error.message);}};
 void window.rotDesktop.ready();
 
