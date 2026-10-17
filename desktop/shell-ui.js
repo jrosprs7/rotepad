@@ -18,6 +18,13 @@ const aboutButton=document.createElement('button');aboutButton.id='about-rotepad
 dialogMarkup('about-rotepad-dialog','<button class="dialog-close" id="about-rotepad-close" aria-label="Close About Rotepad">×</button><h2>Rotepad</h2><p id="about-version"></p><p id="about-copyright"></p><p>Offline notes, on your PC.</p>');
 aboutButton.onclick=async()=>{try{const info=await rotDesktop.info();$('about-version').textContent='Version '+info.version;$('about-copyright').textContent=info.copyright;$('about-rotepad-dialog').showModal();}catch(error){alert('Could not show app information. '+error.message);}};
 $('about-rotepad-close').onclick=()=>$('about-rotepad-dialog').close();
+// Updates (installed copies only): Help > Check for updates, and the once-per-start check in Settings. The main process shows results.
+const updatesButton=document.createElement('button');updatesButton.id='check-updates';updatesButton.textContent='Check for updates…';helpMenu.panel.append(updatesButton);
+updatesButton.onclick=async()=>{helpMenu.menu.open=false;try{await rotDesktop.checkUpdates();}catch(error){alert('Could not check for updates. '+error.message);}};
+$('settings-dialog').querySelector('.settings-grid').insertAdjacentHTML('beforeend','<label for="update-checks-setting" hidden>Check for updates when Rotepad starts</label><input type="checkbox" id="update-checks-setting" hidden title="Rotepad asks GitHub once per start whether a newer version exists. Your notes are never sent.">');
+const showUpdates=settings=>{for(const node of [$('update-checks-setting'),$('update-checks-setting').previousElementSibling])node.hidden=!settings.updates;$('update-checks-setting').checked=settings.updateChecks!==false;};
+rotDesktop.settings().then(showUpdates);rotDesktop.onSettings(showUpdates);
+$('update-checks-setting').onchange=async event=>{const box=event.target;try{showUpdates(await rotDesktop.setUpdateChecks(box.checked));}catch(error){box.checked=!box.checked;alert('Could not change the update setting. '+error.message);}};
 if(rotDesktop.platform==='win32'){
  const defaultRow=document.createElement('div');defaultRow.style.cssText='grid-column:1/-1;display:grid;gap:8px';
  defaultRow.innerHTML='<label>Windows default app</label><button type="button" id="choose-default-apps">Choose Rotepad for .md and .txt…</button><small>Choose your file defaults in Windows Settings. Installing Rotepad does not change them automatically.</small>';

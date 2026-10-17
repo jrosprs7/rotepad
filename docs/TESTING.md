@@ -128,6 +128,7 @@ node desktop/shell-ui-smoke.cjs
 node desktop/context-menu-smoke.cjs
 node desktop/linked-files-smoke.cjs
 node desktop/always-on-top-smoke.cjs
+node desktop/update-smoke.cjs
 ```
 
 | Script in desktop/ | Main area |
@@ -144,6 +145,7 @@ node desktop/always-on-top-smoke.cjs
 | context-menu-smoke.cjs | Right-click menu on note text: items and enabled states; Copy/Cut/Paste/Undo/Redo/Select All acting on the note; formatting items applying Highlight, Strikethrough, Bold and Clear formatting (with Undo) in Formatted view and Highlight in Markdown view, and absent for a caret or the Find field; typed lines copied and cut one line break apart; link open (mocked) and copy; Markdown view; tabs keep note options; plain chrome shows none. Spelling layout uses a supplied misspelling event because the spellchecker reported none in development Electron. Native menus are captured in the main process, not clicked. The system clipboard is used, and its text is saved and restored |
 | linked-files-smoke.cjs | Write-back to opened files with real files in a disposable profile: an exact round trip of a mixed literal `.txt` corpus (direct and after editor re-serialization); no write before an edit; BOM, CRLF and untouched lines kept; Ctrl+S and autosave; plain text for added bold; outside change with Cancel (unlink) and OK (overwrite); Markdown write-back; a missing file not recreated; non-UTF-8 left unchanged; close flush; restart without a prompt. Dialogs are mocked |
 | always-on-top-smoke.cjs | View → Always on top through the real menu: tick, every window including a new one, turning it off from another window, the settings file keeping the save folder (mocked folder picker), non-boolean values rejected, and restart with it on and off. It checks Electron's window flag; it does not verify stacking against other apps |
+| update-smoke.cjs | Updates from a local test feed (`ROTEPAD_TEST_UPDATES`), with the download cache inside the disposable profile (`LOCALAPPDATA` is redirected). The real check, download and SHA-512 verification run; message boxes are answered from a queue, and only the final hand-over to the installer is replaced by a recorder. Covers the startup check and download, Restart now (typing just before it reaches the managed file, then a silent install that restarts Rotepad), Later (silent install on close, no restart), Help → Check for updates when up to date, with an unreachable feed and with the startup check off, the Settings switch saved with the save folder kept and non-booleans rejected, and a copy without updates. It does not install anything, contact GitHub or run the packaged app |
 | close-smoke.cjs | Delegates to library-smoke.cjs; does not need a duplicate run |
 
 Storage changes should include both library-smoke.cjs and markdown-files-smoke.cjs. Printing and layout changes need the corresponding desktop checks.
@@ -155,6 +157,11 @@ shell-ui-smoke.cjs is Windows-only and resizes actual BrowserWindows to check th
 - Tick one or both: the picker appears for each ticked type with Rotepad listed; choosing it with Always makes double-clicked files open in Rotepad.
 - Cancel the picker: installation still finishes.
 - Run a silent install (`/S`): no picker appears.
+
+The per-user installer and updates also need manual checks on a PC where losing the installed copy does not matter, because a packaged Rotepad uses the normal profile:
+- With an all-users 0.12.x copy installed: the installer offers to remove it; Yes with Rotepad open asks to close it first; after Windows' permission prompt the old copy is gone from Program Files and Settings → Apps, the new one is in %LOCALAPPDATA%ProgramsRotepad, and notes and settings are unchanged. No keeps both copies.
+- Default apps and Open with still list Rotepad after the move, and a default chosen under 0.12.x still opens Rotepad.
+- After the next release is published with latest.yml and the block map, an installed 0.13.0 offers it at startup, Restart now reopens the new version, and Later installs it on close.
 
 The OPENASINFO marshaling can be checked without any dialog by compiling a small silent NSIS script that builds and reads back the same structure.
 

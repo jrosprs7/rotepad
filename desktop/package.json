@@ -1,6 +1,6 @@
 {
   "name": "rotepad-desktop",
-  "version": "0.12.7",
+  "version": "0.13.0",
   "description": "Rotepad offline Markdown editor — Windows preview",
   "author": "J.E. Rosaroso",
   "private": true,
@@ -32,10 +32,26 @@
     "portable": {
       "artifactName": "Rotepad-${version}-Windows.exe"
     },
-    "nsis": {"oneClick":false,"perMachine":true,"allowToChangeInstallationDirectory":true,"artifactName":"Rotepad-${version}-Setup.exe","deleteAppDataOnUninstall":false,"include":"installer.nsh"}
+    "publish": {
+      "provider": "github",
+      "owner": "jrosprs7",
+      "repo": "rotepad",
+      "releaseType": "prerelease"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "Rotepad-${version}-Setup.exe",
+      "deleteAppDataOnUninstall": false,
+      "include": "installer.nsh"
+    }
   },
   "devDependencies": {
     "electron": "^44.3.0",
     "electron-builder": "^26.15.3"
+  },
+  "dependencies": {
+    "electron-updater": "6.8.9"
   }
 }

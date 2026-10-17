@@ -29,7 +29,7 @@ async function bounds(){return page.evaluate(()=>{const r=n=>{const b=n.getBound
  await page.evaluate(()=>$('about-rotepad').click());await page.waitForFunction(()=>$('about-rotepad-dialog').open);await page.keyboard.press('Escape');assert.equal(await page.locator('#about-rotepad-dialog').evaluate(el=>el.open),false);
  await app.evaluate(({shell})=>{global.defaultUrls=[];shell.openExternal=async url=>global.defaultUrls.push(url);});
  await page.locator('#compact-app-menu>summary').click();await page.locator('#settings').click();await page.locator('#choose-default-apps').click();
- assert.deepEqual(await app.evaluate(()=>global.defaultUrls),['ms-settings:defaultapps?registeredAppMachine=Rotepad']);await page.keyboard.press('Escape');
+ assert.deepEqual(await app.evaluate(()=>global.defaultUrls),['ms-settings:defaultapps?registeredAppUser=Rotepad']);await page.keyboard.press('Escape');
  assert.match(await page.evaluate(()=>rotDesktop.titlebarTheme('bad-theme').then(()=>'unexpected',error=>error.message)),/Invalid title bar theme/);
  // An additional TXT launch opens another window without replacing the first one.
  const another=path.join(profile,'another note.txt');await fs.writeFile(another,'Another text document');

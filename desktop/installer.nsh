@@ -1,6 +1,44 @@
 ; Register available handlers without overwriting extension defaults or UserChoice.
 ; Keep the existing Markdown ProgID so an already-selected Rotepad default survives upgrades.
+; Registrations go to SHCTX, which is the current user's hive for the per-user install.
 !include nsDialogs.nsh
+
+; Rotepad installs for the current user only, so updates need no administrator prompt; the install-mode page is skipped.
+!macro customInstallMode
+  StrCpy $isForceCurrentInstall "1"
+!macroend
+
+; Versions up to 0.12.7 installed for all users in Program Files. Offer to remove that copy before installing for this user.
+; Notes and settings are in the user profile (%APPDATA%\Rotepad and the save folder), not the install folder, so they are kept.
+; The old uninstaller runs as a copy in the temporary folder, as electron-builder does for upgrades, so ExecWait waits for it and
+; the old folder can be deleted; it asks Windows for permission itself. It would end a running Rotepad, so Rotepad must be closed.
+; This expands inside .onInit, after electron-builder's own definitions; the include itself is read before them.
+!macro customInit
+  ReadRegStr $R8 HKLM "${INSTALL_REGISTRY_KEY}" InstallLocation
+  StrCmp $R8 "" rotepadOldDone
+  IfSilent rotepadOldDone
+  MessageBox MB_YESNO|MB_ICONQUESTION "An older Rotepad is installed for all users in$\r$\n$R8$\r$\n$\r$\nThis version installs for you only, so that it can update itself. Remove the older copy first? Windows will ask for permission.$\r$\n$\r$\nYour notes and settings are kept." IDNO rotepadOldDone
+  rotepadOldRunning:
+    nsExec::Exec '"$SYSDIR\cmd.exe" /C tasklist /FI "IMAGENAME eq ${APP_EXECUTABLE_FILENAME}" /FO CSV /NH | "$SYSDIR\findstr.exe" /B /I /C:"\"${APP_EXECUTABLE_FILENAME}\""'
+    Pop $R9
+    StrCmp $R9 0 0 rotepadOldRemove
+    MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION "Rotepad is open. Close every Rotepad window, then select Retry.$\r$\n$\r$\nSelect Cancel to keep the older copy and install this version alongside it." IDRETRY rotepadOldRunning
+    Goto rotepadOldDone
+  rotepadOldRemove:
+    InitPluginsDir
+    ClearErrors
+    CopyFiles /SILENT "$R8\${UNINSTALL_FILENAME}" "$PLUGINSDIR\old-all-users-uninstaller.exe"
+    IfErrors rotepadOldCheck
+    ExecWait '"$PLUGINSDIR\old-all-users-uninstaller.exe" /S /allusers /KEEP_APP_DATA _?=$R8' $R9
+  rotepadOldCheck:
+    ReadRegStr $R9 HKLM "${INSTALL_REGISTRY_KEY}" InstallLocation
+    StrCmp $R9 "" rotepadOldDone
+    MessageBox MB_OK|MB_ICONEXCLAMATION "The older Rotepad could not be removed. This version will be installed for you alongside it.$\r$\n$\r$\nYou can remove the older copy later in Windows Settings > Apps > Installed apps."
+  rotepadOldDone:
+  ; electron-builder picks all-users mode when only an all-users copy exists; this version always installs for the current user.
+  StrCpy $hasPerMachineInstallation "0"
+  !insertmacro setInstallModePerUser
+!macroend
 
 ; Windows lets only the user choose a default app. For each file type ticked on the installer's Default apps page,
 ; show Windows' own picker with "Always" ticked (OAIF_REGISTER_EXT|OAIF_FORCE_REGISTRATION). No file is opened (no OAIF_EXEC).
@@ -21,26 +59,26 @@
   Pop $0
 !macroend
 !macro RotepadFileType EXT PROGID
-  WriteRegStr HKLM "Software\Classes\${PROGID}" "" "Rotepad document"
-  WriteRegStr HKLM "Software\Classes\${PROGID}\Application" "ApplicationName" "Rotepad"
-  WriteRegStr HKLM "Software\Classes\${PROGID}\Application" "ApplicationDescription" "Rotepad offline notes"
-  WriteRegStr HKLM "Software\Classes\${PROGID}\Application" "ApplicationIcon" '$\"$INSTDIR\${APP_EXECUTABLE_FILENAME}$\",0'
-  WriteRegStr HKLM "Software\Classes\${PROGID}\DefaultIcon" "" '$\"$INSTDIR\${APP_EXECUTABLE_FILENAME}$\",0'
-  WriteRegStr HKLM "Software\Classes\${PROGID}\shell\open" "" "Open with Rotepad"
-  WriteRegStr HKLM "Software\Classes\${PROGID}\shell\open\command" "" '$\"$INSTDIR\${APP_EXECUTABLE_FILENAME}$\" $\"%1$\"'
-  WriteRegNone HKLM "Software\Classes\.${EXT}\OpenWithProgids" "${PROGID}"
-  WriteRegStr HKLM "Software\Classes\Applications\${APP_EXECUTABLE_FILENAME}\SupportedTypes" ".${EXT}" ""
-  WriteRegStr HKLM "Software\Rotepad\Capabilities\FileAssociations" ".${EXT}" "${PROGID}"
+  WriteRegStr SHCTX "Software\Classes\${PROGID}" "" "Rotepad document"
+  WriteRegStr SHCTX "Software\Classes\${PROGID}\Application" "ApplicationName" "Rotepad"
+  WriteRegStr SHCTX "Software\Classes\${PROGID}\Application" "ApplicationDescription" "Rotepad offline notes"
+  WriteRegStr SHCTX "Software\Classes\${PROGID}\Application" "ApplicationIcon" '$\"$INSTDIR\${APP_EXECUTABLE_FILENAME}$\",0'
+  WriteRegStr SHCTX "Software\Classes\${PROGID}\DefaultIcon" "" '$\"$INSTDIR\${APP_EXECUTABLE_FILENAME}$\",0'
+  WriteRegStr SHCTX "Software\Classes\${PROGID}\shell\open" "" "Open with Rotepad"
+  WriteRegStr SHCTX "Software\Classes\${PROGID}\shell\open\command" "" '$\"$INSTDIR\${APP_EXECUTABLE_FILENAME}$\" $\"%1$\"'
+  WriteRegNone SHCTX "Software\Classes\.${EXT}\OpenWithProgids" "${PROGID}"
+  WriteRegStr SHCTX "Software\Classes\Applications\${APP_EXECUTABLE_FILENAME}\SupportedTypes" ".${EXT}" ""
+  WriteRegStr SHCTX "Software\Rotepad\Capabilities\FileAssociations" ".${EXT}" "${PROGID}"
 !macroend
 
 !macro customInstall
-  WriteRegStr HKLM "Software\Classes\Applications\${APP_EXECUTABLE_FILENAME}" "FriendlyAppName" "Rotepad"
-  WriteRegStr HKLM "Software\Classes\Applications\${APP_EXECUTABLE_FILENAME}\DefaultIcon" "" '$\"$INSTDIR\${APP_EXECUTABLE_FILENAME}$\",0'
-  WriteRegStr HKLM "Software\Classes\Applications\${APP_EXECUTABLE_FILENAME}\shell\open\command" "" '$\"$INSTDIR\${APP_EXECUTABLE_FILENAME}$\" $\"%1$\"'
-  WriteRegStr HKLM "Software\Rotepad\Capabilities" "ApplicationName" "Rotepad"
-  WriteRegStr HKLM "Software\Rotepad\Capabilities" "ApplicationDescription" "Rotepad offline Markdown and text notes"
-  WriteRegStr HKLM "Software\Rotepad\Capabilities" "ApplicationIcon" '$\"$INSTDIR\${APP_EXECUTABLE_FILENAME}$\",0'
-  WriteRegStr HKLM "Software\RegisteredApplications" "Rotepad" "Software\Rotepad\Capabilities"
+  WriteRegStr SHCTX "Software\Classes\Applications\${APP_EXECUTABLE_FILENAME}" "FriendlyAppName" "Rotepad"
+  WriteRegStr SHCTX "Software\Classes\Applications\${APP_EXECUTABLE_FILENAME}\DefaultIcon" "" '$\"$INSTDIR\${APP_EXECUTABLE_FILENAME}$\",0'
+  WriteRegStr SHCTX "Software\Classes\Applications\${APP_EXECUTABLE_FILENAME}\shell\open\command" "" '$\"$INSTDIR\${APP_EXECUTABLE_FILENAME}$\" $\"%1$\"'
+  WriteRegStr SHCTX "Software\Rotepad\Capabilities" "ApplicationName" "Rotepad"
+  WriteRegStr SHCTX "Software\Rotepad\Capabilities" "ApplicationDescription" "Rotepad offline Markdown and text notes"
+  WriteRegStr SHCTX "Software\Rotepad\Capabilities" "ApplicationIcon" '$\"$INSTDIR\${APP_EXECUTABLE_FILENAME}$\",0'
+  WriteRegStr SHCTX "Software\RegisteredApplications" "Rotepad" "Software\Rotepad\Capabilities"
   !insertmacro RotepadFileType "md" "Rotepad Markdown document"
   !insertmacro RotepadFileType "markdown" "Rotepad Markdown document"
   !insertmacro RotepadFileType "txt" "Rotepad Text document"
@@ -87,15 +125,15 @@
 !macroend
 
 !macro customUnInstall
-  DeleteRegValue HKLM "Software\Classes\.md\OpenWithProgids" "Rotepad Markdown document"
-  DeleteRegValue HKLM "Software\Classes\.markdown\OpenWithProgids" "Rotepad Markdown document"
-  DeleteRegValue HKLM "Software\Classes\.txt\OpenWithProgids" "Rotepad Text document"
-  DeleteRegKey HKLM "Software\Classes\Rotepad Markdown document"
-  DeleteRegKey HKLM "Software\Classes\Rotepad Text document"
-  DeleteRegKey HKLM "Software\Classes\Applications\${APP_EXECUTABLE_FILENAME}"
-  DeleteRegKey HKLM "Software\Rotepad\Capabilities"
-  DeleteRegKey /ifempty HKLM "Software\Rotepad"
-  DeleteRegValue HKLM "Software\RegisteredApplications" "Rotepad"
+  DeleteRegValue SHCTX "Software\Classes\.md\OpenWithProgids" "Rotepad Markdown document"
+  DeleteRegValue SHCTX "Software\Classes\.markdown\OpenWithProgids" "Rotepad Markdown document"
+  DeleteRegValue SHCTX "Software\Classes\.txt\OpenWithProgids" "Rotepad Text document"
+  DeleteRegKey SHCTX "Software\Classes\Rotepad Markdown document"
+  DeleteRegKey SHCTX "Software\Classes\Rotepad Text document"
+  DeleteRegKey SHCTX "Software\Classes\Applications\${APP_EXECUTABLE_FILENAME}"
+  DeleteRegKey SHCTX "Software\Rotepad\Capabilities"
+  DeleteRegKey /ifempty SHCTX "Software\Rotepad"
+  DeleteRegValue SHCTX "Software\RegisteredApplications" "Rotepad"
   System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0x1000, p 0, p 0)'
 !macroend
 

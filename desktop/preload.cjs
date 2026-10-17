@@ -17,6 +17,8 @@ contextBridge.exposeInMainWorld('rotDesktop', {
   settings: () => ipcRenderer.invoke('desktop-settings'),
   chooseFolder: () => ipcRenderer.invoke('choose-folder'),
   setAlwaysOnTop: value => ipcRenderer.invoke('window-on-top', value),
+  setUpdateChecks: value => ipcRenderer.invoke('update-checks', value),
+  checkUpdates: () => ipcRenderer.invoke('update-check'),
   ready: () => ipcRenderer.invoke('desktop-ready'),
   libraryInitial: () => ipcRenderer.sendSync('library-initial'),
   librarySave: (text,base) => ipcRenderer.invoke('library-save',{text,base}),

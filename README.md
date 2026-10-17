@@ -2,7 +2,7 @@
 
 Rotepad is an offline writing application with formatted editing, Markdown source, a note library, search, history and backups. The same shared editor supports a standalone browser file and a Windows desktop application.
 
-The desktop package version is **0.12.7**, as declared in [desktop/package.json](desktop/package.json). Windows builds are unsigned previews. macOS/Linux packaging and phone sync remain planned.
+The desktop package version is **0.13.0**, as declared in [desktop/package.json](desktop/package.json). Windows builds are unsigned previews. macOS/Linux packaging and phone sync remain planned.
 
 ## Open Rotepad
 
@@ -57,6 +57,15 @@ Desktop Ctrl+P opens print preview with paper size, orientation and PDF export. 
 Tab inserts a tab at the text cursor (displayed with four-column tab stops). With multiple lines selected it indents them; in a list it nests the item. Shift+Tab decreases indentation. Tables retain Tab/Shift+Tab cell navigation. These editor shortcuts work in Formatted and Markdown/Split views; ordinary dialog and toolbar controls retain focus navigation.
 
 Right-click in the desktop app's text for Undo, Redo, Cut, Copy, Paste and Select All. With text selected in the note, the menu also offers Bold, Italic, Underline, Strikethrough, Highlight and Clear formatting. Right-click a link to open or copy it, and a word marked as misspelled for spelling suggestions or Add to dictionary. Right-clicking a tab still opens its note options. The browser version uses the browser's own right-click menu. Copying from Formatted or Preview view puts one line break between lines, so text pasted into other apps keeps its spacing. Formatting is also copied, without extra paragraph gaps, for apps that accept it, such as Word or email.
+
+## Updates
+
+From 0.13.0, the Windows installer installs Rotepad for your account only (in %LOCALAPPDATA%ProgramsRotepad), so it needs no administrator permission and can update itself.
+
+- **When it checks:** once each time Rotepad starts, Rotepad asks this project's GitHub releases whether a newer version exists. Nothing else goes online, and your notes are never sent. To stop the check, untick **Settings → Check for updates when Rotepad starts**. **Menu → Help → Check for updates…** checks at any time, even with the setting off.
+- **When there is an update:** it downloads in the background while you keep writing, then Rotepad asks to restart. **Restart now** saves your notes, closes every window, installs the update and opens Rotepad again. **Later** installs it the next time you close Rotepad.
+- **Upgrading from 0.12.x or earlier:** those versions were installed for all users in Program Files. The 0.13.0 installer offers to remove that copy first; close Rotepad, choose Yes and allow Windows' permission prompt. Your notes and settings are kept. If you choose No, both copies stay installed until you remove the old one in Windows Settings → Apps.
+- **Portable version:** the Windows.exe build does not update itself; download new versions from the releases page.
 
 ## Data and portability
 

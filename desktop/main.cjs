@@ -42,6 +42,41 @@ function showContextMenu(win,params){
  if(link)items.push(...(items.length?[{type:'separator'}]:[]),{label:'Open link',click:()=>external(link)},{label:'Copy link address',click:()=>clipboard.writeText(link)});
  if(items.length)Menu.buildFromTemplate(items).popup({window:win});
 }
+// Installed copies update from the GitHub releases (pre-releases included, as every Rotepad release is one). Rotepad checks once per
+// launch unless that is turned off, downloads in the background and asks before restarting; otherwise the update installs when
+// Rotepad closes. Restarting first closes every window through the normal save path, because the installer ends a running Rotepad.
+// The portable copy cannot replace itself. Development runs check only a test feed named by ROTEPAD_TEST_UPDATES.
+let updater,updateChecks=true,updateReady=null,updateOffered=false,restarting=false;
+function getUpdater(){
+ if(updater!==undefined)return updater;updater=null;
+ const feed=!app.isPackaged&&process.env.ROTEPAD_TEST_UPDATES;
+ if(process.platform!=='win32'||process.env.PORTABLE_EXECUTABLE_DIR||(!app.isPackaged&&!feed))return null;
+ updater=require('electron-updater').autoUpdater;
+ if(feed){updater.forceDevUpdateConfig=true;updater.updateConfigPath=feed;}
+ updater.logger=null;updater.allowPrerelease=true;updater.autoDownload=true;updater.autoInstallOnAppQuit=true;
+ updater.on('error',()=>{});
+ updater.on('update-downloaded',info=>{updateReady=info;if(!updateOffered){updateOffered=true;void offerRestart(info);}});
+ return updater;
+}
+const desktopSettings=()=>({saveFolder,alwaysOnTop,updateChecks,updates:Boolean(getUpdater())});
+async function offerRestart(info,win=BrowserWindow.getFocusedWindow()||[...windows.values()][0]?.win){
+ if(!win||win.isDestroyed()||restarting)return;
+ const {response}=await dialog.showMessageBox(win,{type:'info',title:'Rotepad update',message:'Rotepad '+info.version+' is ready to install.',detail:'Restart now to update. Your notes are saved first. If you choose Later, the update installs when you close Rotepad.',buttons:['Restart now','Later'],defaultId:0,cancelId:1,noLink:true});
+ if(response!==0||restarting||win.isDestroyed())return;
+ const states=[...windows.values()];
+ if(busy.size||states.some(state=>!state.ready||state.closePending||state.pickerBusy||state.printBusy)){await dialog.showMessageBox(win,{type:'info',title:'Rotepad update',message:'Rotepad is busy.',detail:'Finish saving, printing or choosing a folder, then choose Help > Check for updates again. Otherwise the update installs when you close Rotepad.',buttons:['OK']});return;}
+ restarting=true;for(const state of states)state.win.close();
+}
+async function checkForUpdates(win){
+ const updates=getUpdater(),tell=(message,detail)=>win.isDestroyed()?null:dialog.showMessageBox(win,{type:'info',title:'Rotepad updates',message,detail,buttons:['OK']});
+ if(!updates){await tell('This copy of Rotepad does not update itself.','The portable version cannot update. Install Rotepad with the Setup file from the releases page to get updates.');return {status:'unavailable'};}
+ if(updateReady){await offerRestart(updateReady,win);return {status:'ready',version:updateReady.version};}
+ try{
+  const result=await updates.checkForUpdates();
+  if(result?.isUpdateAvailable){result.downloadPromise?.catch(()=>{});await tell('Rotepad '+result.updateInfo.version+' is downloading.','You will be asked to restart when it is ready. You can keep working.');return {status:'downloading',version:result.updateInfo.version};}
+  await tell('Rotepad is up to date.','You have version '+app.getVersion()+'.');return {status:'current'};
+ }catch(error){await tell('Could not check for updates.','Check the internet connection and try again.\n'+error.message);return {status:'error'};}
+}
 // Settings writes are serialized and keep every stored key; the default save folder is never written unless chosen.
 function writeSettings(change){const operation=settingsQueue.catch(()=>{}).then(async()=>{const next={...storedSettings,...change};await atomicWrite(settingsPath,JSON.stringify(next));storedSettings=next;});settingsQueue=operation;return operation;}
 function broadcast(channel,value,except){for(const state of windows.values())if(state!==except&&state.ready&&!state.win.isDestroyed())state.win.webContents.send(channel,value);}
@@ -65,7 +100,7 @@ else app.whenReady().then(async()=>{
  try{libraryData=await fs.readFile(libraryPath,'utf8');validateLibrary(libraryData);}catch(error){if(error.code!=='ENOENT'){dialog.showErrorBox('Could not load notes','Rotepad could not read its saved library. Your files have been left untouched.\n'+error.message);app.quit();return;}}
  linksPath=path.join(app.getPath('userData'),'note-files.json');settingsPath=path.join(app.getPath('userData'),'desktop-settings.json');
  saveFolder=!app.isPackaged&&process.env.ROTEPAD_TEST_DATA?path.join(app.getPath('userData'),'Documents','Rotepad Docs'):path.join(app.getPath('documents'),'Rotepad Docs');
- try{const settings=JSON.parse(await fs.readFile(settingsPath,'utf8'));if(typeof settings.saveFolder==='string'&&path.isAbsolute(settings.saveFolder))saveFolder=storedSettings.saveFolder=settings.saveFolder;if(settings.alwaysOnTop===true)alwaysOnTop=storedSettings.alwaysOnTop=true;}catch{}
+ try{const settings=JSON.parse(await fs.readFile(settingsPath,'utf8'));if(typeof settings.saveFolder==='string'&&path.isAbsolute(settings.saveFolder))saveFolder=storedSettings.saveFolder=settings.saveFolder;if(settings.alwaysOnTop===true)alwaysOnTop=storedSettings.alwaysOnTop=true;if(settings.updateChecks===false)updateChecks=storedSettings.updateChecks=false;}catch{}
  try{for(const [id,file] of Object.entries(JSON.parse(await fs.readFile(linksPath,'utf8'))))if(typeof file==='string'&&path.isAbsolute(file))links[id]=file;}catch{}
  syncedPath=path.join(app.getPath('userData'),'linked-files.json');
  try{for(const [id,entry] of Object.entries(JSON.parse(await fs.readFile(syncedPath,'utf8'))))if(typeof entry?.file==='string'&&path.isAbsolute(entry.file)&&['md','txt'].includes(entry.kind)&&['\n','\r\n'].includes(entry.eol)&&typeof entry.hash==='string')synced[id]={file:entry.file,kind:entry.kind,bom:entry.bom===true,eol:entry.eol,hash:entry.hash};}catch{}
@@ -86,13 +121,15 @@ else app.whenReady().then(async()=>{
  ipcMain.handle('window-new',async event=>{check(event);await libraryQueue;await createWindow();return true;});
  ipcMain.handle('desktop-info',event=>{check(event);return {name:'Rotepad',version:app.getVersion(),copyright:'© 2026, J.E. Rosaroso'};});
  ipcMain.handle('titlebar-theme',(event,theme)=>{const state=check(event);if(!['light','dark'].includes(theme))throw Error('Invalid title bar theme');if(process.platform==='win32')state.win.setTitleBarOverlay({height:34,color:theme==='dark'?'#191b1e':'#d6d6d3',symbolColor:theme==='dark'?'#f3f4f6':'#0e0e0e'});});
- ipcMain.handle('desktop-default-apps',async event=>{check(event);if(process.platform!=='win32')throw Error('Default app settings are available on Windows.');await shell.openExternal(process.env.PORTABLE_EXECUTABLE_DIR?'ms-settings:defaultapps':'ms-settings:defaultapps?registeredAppMachine=Rotepad');});
- ipcMain.handle('close-finish',(event,approved)=>{const state=check(event);if(!state.closePending)return;state.closePending=false;if(approved===true){state.allowClose=true;state.win.close();}else void sendQueued(state);});
+ ipcMain.handle('desktop-default-apps',async event=>{check(event);if(process.platform!=='win32')throw Error('Default app settings are available on Windows.');await shell.openExternal(process.env.PORTABLE_EXECUTABLE_DIR?'ms-settings:defaultapps':'ms-settings:defaultapps?registeredAppUser=Rotepad');});
+ ipcMain.handle('close-finish',(event,approved)=>{const state=check(event);if(!state.closePending)return;state.closePending=false;if(approved!==true)restarting=false;if(approved===true){state.allowClose=true;state.win.close();}else void sendQueued(state);});
  ipcMain.handle('note-files',event=>{check(event);return Object.entries(links).map(([id,file])=>({id,name:path.basename(file)}));});
  ipcMain.handle('note-show-in-folder',async(event,id)=>{check(event);if(typeof id!=='string')throw Error('Invalid note');await libraryQueue;if(!libraryData||!validateLibrary(libraryData).notes.some(note=>note.id===id))throw Error('Note not found');const record=markdownStore.records[id];if(!record)return {error:'This empty note has no file yet. Start writing or give it a name first.'};if(!(await fs.stat(record.file)).isFile())throw Error('The note file could not be found.');shell.showItemInFolder(record.file);return {ok:true};});
- ipcMain.handle('desktop-settings',event=>{check(event);return {saveFolder,alwaysOnTop};});
+ ipcMain.handle('desktop-settings',event=>{check(event);return desktopSettings();});
  // Always on top is app-wide: every window follows it, and it is kept with the other desktop settings.
- ipcMain.handle('window-on-top',(event,value)=>{check(event);if(typeof value!=='boolean')throw Error('Invalid always-on-top setting');return writeSettings({alwaysOnTop:value}).then(()=>{alwaysOnTop=value;for(const state of windows.values())if(!state.win.isDestroyed())state.win.setAlwaysOnTop(value);broadcast('settings-changed',{saveFolder,alwaysOnTop});return {saveFolder,alwaysOnTop};});});
+ ipcMain.handle('window-on-top',(event,value)=>{check(event);if(typeof value!=='boolean')throw Error('Invalid always-on-top setting');return writeSettings({alwaysOnTop:value}).then(()=>{alwaysOnTop=value;for(const state of windows.values())if(!state.win.isDestroyed())state.win.setAlwaysOnTop(value);broadcast('settings-changed',desktopSettings());return desktopSettings();});});
+ ipcMain.handle('update-checks',(event,value)=>{check(event);if(typeof value!=='boolean')throw Error('Invalid update setting');return writeSettings({updateChecks:value}).then(()=>{updateChecks=value;broadcast('settings-changed',desktopSettings());return desktopSettings();});});
+ ipcMain.handle('update-check',event=>checkForUpdates(check(event).win));
  ipcMain.handle('print-preview',async(event,options)=>{
   const state=check(event);if(state.printBusy)throw Error('Please wait for the current print operation.');
   if(!options||!['A4','Letter','Legal','A5'].includes(options.pageSize)||typeof options.landscape!=='boolean')throw Error('Invalid paper settings');
@@ -107,7 +144,7 @@ else app.whenReady().then(async()=>{
    return await new Promise((resolve,reject)=>win.webContents.print({...preview.settings,silent:false,printBackground:true},(success,reason)=>{if(success)resolve({printed:true});else if(/cancel/i.test(reason))resolve({canceled:true});else reject(Error(reason||'Printing failed.'));}));
   }finally{state.printBusy=false;state.pickerBusy=false;}
  });
- ipcMain.handle('choose-folder',async event=>{const state=check(event);if(state.pickerBusy)return null;state.pickerBusy=true;try{const result=await dialog.showOpenDialog(state.win,{title:'Default save folder',defaultPath:saveFolder,properties:['openDirectory','createDirectory']});if(result.canceled)return null;const chosen=result.filePaths[0];await writeSettings({saveFolder:chosen});saveFolder=chosen;broadcast('settings-changed',{saveFolder,alwaysOnTop});return {saveFolder,alwaysOnTop};}finally{state.pickerBusy=false;}});
+ ipcMain.handle('choose-folder',async event=>{const state=check(event);if(state.pickerBusy)return null;state.pickerBusy=true;try{const result=await dialog.showOpenDialog(state.win,{title:'Default save folder',defaultPath:saveFolder,properties:['openDirectory','createDirectory']});if(result.canceled)return null;const chosen=result.filePaths[0];await writeSettings({saveFolder:chosen});saveFolder=chosen;broadcast('settings-changed',desktopSettings());return desktopSettings();}finally{state.pickerBusy=false;}});
  ipcMain.handle('desktop-ready',event=>{const state=check(event);state.ready=true;void sendQueued(state);});
  ipcMain.handle('note-save',async(event,data)=>{
   const state=check(event);if(!data||typeof data.id!=='string'||typeof data.text!=='string'||typeof data.name!=='string')throw Error('Invalid note');if(busy.has(data.id)||state.pickerBusy)return null;busy.add(data.id);
@@ -134,7 +171,9 @@ else app.whenReady().then(async()=>{
  });
  ipcMain.handle('note-unlink',async(event,id)=>{check(event);if(typeof id!=='string')throw Error('Invalid note');delete synced[id];await storeSynced();});
  await createWindow(startupPaths.splice(0),true);
+ if(updateChecks&&getUpdater())setTimeout(()=>{if(!updateReady)updater.checkForUpdates().then(result=>result?.downloadPromise?.catch(()=>{})).catch(()=>{});},app.isPackaged?5000:0);
 });
 app.on('second-instance',(_event,args)=>{const paths=requestedPaths(args.slice(app.isPackaged?1:2));if(!markdownStore)startupPaths.push(...paths);else void createWindow(paths);});
 app.on('open-file',(event,file)=>{event.preventDefault();if(!markdownStore)startupPaths.push(file);else void createWindow([file]);});
-app.on('window-all-closed',()=>app.quit());
+// After Restart now, the closed windows hand over to the installer, which starts Rotepad again; if it cannot start, Rotepad just quits.
+app.on('window-all-closed',()=>{if(restarting&&updateReady){updater.quitAndInstall(true,true);if(updater.quitAndInstallCalled)return;}app.quit();});

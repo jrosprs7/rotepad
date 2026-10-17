@@ -31,6 +31,7 @@ Original reproductions are in the [0.5.1 QA report](docs/archive/QA-0.5.1.md). I
 Use disposable notes, isolated profiles and test files.
 
 - [ ] Verify fresh Windows installation/upgrades, default-app selection, native Save/Open dialogs, cancellation and failed writes.
+- [ ] Verify the 0.13.0 per-user installer on a PC with an all-users 0.12.x copy (removal offer, permission prompt, notes kept, default apps), and the first real update from a published release (startup offer, Restart now, Later). The manual steps are in the [testing guide](docs/TESTING.md).
 - [ ] Verify physical printing, links, closing/reopening and prolonged desktop use.
 - [ ] Check whether desktop spellcheck underlines misspelled words in the installed app. In development Electron (2026-10-07) it reported no misspellings, raised no dictionary events and created no Dictionaries folder, so right-click spelling suggestions may never appear. If so, investigate Windows spellchecker versus Hunspell dictionary setup, keeping offline use in mind.
 - [ ] Broaden interactive checks for bullets, checkboxes, nested lists, lists inside quotes and middle-of-list exits.
