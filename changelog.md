@@ -1,5 +1,12 @@
 # Rotepad changelog
 
+## 10/18/26 12:06 AM GMT+8 — Published 0.13.0; upgrade from an all-users 0.12.1 checked on a real PC
+
+- Published the [v0.13.0 pre-release](https://github.com/jrosprs7/rotepad/releases/tag/v0.13.0) at commit 9903985 (README download link; the installer was built from the source in 73e1afb). Assets: Rotepad-0.13.0-Setup.exe, latest.yml and Rotepad-0.13.0-Setup.exe.blockmap. The notes cover the unreleased 0.12.5–0.12.7 as well. The README download link now points at 0.13.0.
+- Downloaded anonymously: the Setup file's SHA-256 is `2c211fdc6146868bc61e0e4cf74e4a53f3bd580163eecc12f189a5fa4e81fd31`, as built; latest.yml and the block map are byte-identical to dist, and latest.yml's SHA-512 matches the downloaded Setup file. The repository's releases feed, which installed copies read, lists v0.13.0 first.
+- Before publishing, the user installed 0.13.0 over the all-users 0.12.1 on their own PC. Checked afterwards (read-only): no all-users uninstall entry, Start menu shortcut or file-type registration is left; 0.13.0 is registered and installed in %LOCALAPPDATA%ProgramsRotepad, with its file types and Default Apps capability under HKCU; the library in %APPDATA%Rotepad kept being saved; the installer left its copy in %LOCALAPPDATA%otepad-desktop-updater for partial downloads. An empty C:Program FilesRotepad folder remains: the old uninstaller, run from the temporary folder with `_?=`, does not remove its own install folder. It is harmless and needs administrator rights to delete.
+- Not yet seen: a real automatic update, which needs the next release.
+
 ## 10/17/26 8:40 AM GMT+8 — Windows build 0.13.0 (not published): per-user install and automatic updates
 
 - **Requested:** a build that installs per user instead of in Program Files, so it can update itself. Chosen with the user: check once at startup and ask before restarting; offer to remove an older all-users copy.
