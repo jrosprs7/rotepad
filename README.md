@@ -7,7 +7,7 @@ The desktop package version is **0.13.0**, as declared in [desktop/package.json]
 ## Open Rotepad
 
 - **Browser:** open [Rotepad.html](Rotepad.html) in a browser. No server or build is required. Browser notes are stored separately from desktop notes.
-- **Windows:** [download the 0.12.4 installer](https://github.com/jrosprs7/rotepad/releases/download/v0.12.4/Rotepad-0.12.4-Setup.exe), or visit the [testing release](https://github.com/jrosprs7/rotepad/releases/tag/v0.12.4) for details. This is an unsigned Windows x64 preview. For building locally, see the [desktop guide](desktop/README.md).
+- **Windows:** [download the 0.13.0 installer](https://github.com/jrosprs7/rotepad/releases/download/v0.13.0/Rotepad-0.13.0-Setup.exe), or visit the [testing release](https://github.com/jrosprs7/rotepad/releases/tag/v0.13.0) for details. This is an unsigned Windows x64 preview. For building locally, see the [desktop guide](desktop/README.md).
 
 ## Writing and notes
 
