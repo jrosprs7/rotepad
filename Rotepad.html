@@ -217,10 +217,11 @@ function inline(s){
   out+=escapeHTML(s[i++]);
  }return out;
 }
-function markdown(text){
+// blocks, if given, receives where each top-level block starts: its line and its offset in the output (see renderPreview).
+function markdown(text,blocks){
  const lines=text.replace(/\r\n?/g,'\n').split('\n');let out='',list='',code=null;
  const close=()=>{if(list){out+='</'+list+'>';list=''}};
- for(let lineIndex=0;lineIndex<lines.length;lineIndex++){const line=lines[lineIndex];let m;
+ for(let lineIndex=0;lineIndex<lines.length;lineIndex++){const line=lines[lineIndex];let m;if(code===null)blocks?.push({line:lineIndex,at:out.length});
   if(/^\s*```/.test(line)){close();if(code!==null){out+='<pre><code>'+escapeHTML(code.join('\n'))+'</code></pre>';code=null}else code=[];continue}
   if(code!==null){code.push(line);continue}
   if(lineIndex+1<lines.length&&line.includes('|')&&tableSeparator(lines[lineIndex+1])){close();const rows=[tableCells(line)];lineIndex++;while(lineIndex+1<lines.length&&lines[lineIndex+1].trim()&&lines[lineIndex+1].includes('|'))rows.push(tableCells(lines[++lineIndex]));out+=tableHTML(rows);continue;}
@@ -246,9 +247,50 @@ function writingLinks(text){
  for(const match of text.matchAll(pattern)){const start=match.index;html+=escapeHTML(text.slice(last,start));html+=(start===0||/[\s([{>]/.test(text[start-1]))?inline(match[0]):escapeHTML(match[0]);last=start+match[0].length}
  return html+escapeHTML(text.slice(last))+'\n';
 }
-function render(){const t=editor.value;preview.innerHTML=t?markdown(t):'<p class="empty">Your formatted note will appear here.</p>';linkLayer.innerHTML=writingLinks(t);linkLayer.querySelectorAll('a').forEach(a=>{a.tabIndex=-1;a.title='Ctrl+click to open '+a.textContent});syncLinks();$('count').textContent=(t.trim()?t.trim().split(/\s+/).length:0)+' words · '+t.length+' characters';position()}
+// Each view rebuilds only what it shows: the preview in Split and Preview, the Markdown link layer in Markdown and Split.
+// The other is marked stale, and setMode rebuilds it before showing it.
+let previewStale=false,layerStale=false,layerText=null,previewText=null,previewBlocks=null;
+function lineBreaks(s,from,to){let n=0;for(let i=s.indexOf('\n',from);i!==-1&&i<to;i=s.indexOf('\n',i+1))n++;return n}
+// The lines that differ between two texts: the first changed line and the last one in each, or null if the texts are equal.
+function changedLines(old,t){
+ let a=0,b=0;const max=Math.min(old.length,t.length);while(a<max&&old.charCodeAt(a)===t.charCodeAt(a))a++;
+ if(a===old.length&&a===t.length)return null;
+ while(b<max-a&&old.charCodeAt(old.length-1-b)===t.charCodeAt(t.length-1-b))b++;
+ const first=lineBreaks(t,0,a);return {first,oldLast:first+lineBreaks(old,a,old.length-b),newLast:first+lineBreaks(t,a,t.length-b)};
+}
+function replaceNodes(parent,from,count,html){const temp=document.createElement('template');temp.innerHTML=html;const r=document.createRange();if(count){r.setStartBefore(parent.childNodes[from]);r.setEndAfter(parent.childNodes[from+count-1]);r.deleteContents()}else r.setStart(parent,from);r.insertNode(temp.content)}
+// The preview keeps where each top-level block starts and how many nodes it made. markdown() reads forward and looks at most one
+// line ahead, so a key re-parses from the block before the first changed line up to a block boundary after the change that the old
+// parse also had; everything else is kept. Lists can make several nodes; every other block makes one.
+function renderPreview(t=editor.value){
+ previewStale=false;const old=previewText;previewText=t;
+ const blocksOf=(html,found,offset)=>found.map((block,i)=>{const part=html.slice(block.at,found[i+1]?found[i+1].at:html.length),temp=document.createElement('template');if(/^<[uo]l\b/.test(part))temp.innerHTML=part;return {line:block.line+offset,count:/^<[uo]l\b/.test(part)?temp.content.childNodes.length:1}});
+ const change=old&&t&&previewBlocks&&!/\r/.test(t)?changedLines(old,t):null;
+ if(!change){if(old===t&&previewBlocks)return;const found=[],html=t?markdown(t,found):'<p class="empty">Your formatted note will appear here.</p>';preview.innerHTML=html;previewBlocks=t&&!/\r/.test(t)?blocksOf(html,found,0):null;return}
+ const blocks=previewBlocks,lines=t.split('\n'),delta=change.newLast-change.oldLast;
+ let s=0;while(s+1<blocks.length&&blocks[s+1].line<=change.first-1)s++;
+ let k=0;while(k<blocks.length&&blocks[k].line<=change.oldLast)k++;
+ for(;;k++){
+  const start=blocks[s].line,end=k<blocks.length?blocks[k].line+delta:lines.length,found=[],html=markdown(lines.slice(start,Math.min(end+1,lines.length)).join('\n'),found);
+  const boundary=k<blocks.length?found.find(block=>block.line===end-start):{at:html.length};if(!boundary)continue;
+  const kept=found.filter(block=>block.line<end-start),from=blocks.slice(0,s).reduce((n,block)=>n+block.count,0),count=blocks.slice(s,k).reduce((n,block)=>n+block.count,0);
+  replaceNodes(preview,from,count,html.slice(0,boundary.at));
+  previewBlocks=[...blocks.slice(0,s),...blocksOf(html.slice(0,boundary.at),kept,start),...blocks.slice(k).map(block=>({line:block.line+delta,count:block.count}))];return;
+ }
+}
+// The link layer holds one span per line, ending with its line break, and web addresses never cross a line break,
+// so only the changed lines are rebuilt. Its text and links match writingLinks(t).
+function renderLinkLayer(t=editor.value){
+ layerStale=false;const old=layerText;layerText=t;
+ const html=lines=>lines.map(line=>'<span>'+writingLinks(line)+'</span>').join(''),mark=root=>root.querySelectorAll('a').forEach(a=>{a.tabIndex=-1;a.title='Ctrl+click to open '+a.textContent});
+ if(old===null){linkLayer.innerHTML=html(t.split('\n'));mark(linkLayer);syncLinks();return}
+ const change=changedLines(old,t);
+ if(change){const lines=t.split('\n').slice(change.first,change.newLast+1),temp=document.createElement('template');temp.innerHTML=html(lines);mark(temp.content);const r=document.createRange();r.setStartBefore(linkLayer.children[change.first]);r.setEndAfter(linkLayer.children[change.oldLast]);r.deleteContents();r.insertNode(temp.content)}
+ syncLinks();
+}
+function render(){const t=editor.value;if(mode==='split'||mode==='preview')renderPreview(t);else previewStale=true;if(mode==='write'||mode==='split')renderLinkLayer(t);else layerStale=true;$('count').textContent=(t.trim()?t.trim().split(/\s+/).length:0)+' words · '+t.length+' characters';position()}
 function change(){render();if(mode==='rich')loadRich();persist()}
-function setMode(value){const previous=mode;mode=value;if(value==='rich'&&previous!=='rich')loadRich();document.querySelector('.workspace').dataset.mode=value;document.querySelectorAll('[data-mode]').forEach(b=>{if(b.tagName==='BUTTON')b.setAttribute('aria-pressed',b.dataset.mode===value)});document.querySelectorAll('.format button').forEach(b=>b.disabled=value==='preview');position();persist()}
+function setMode(value){const previous=mode;mode=value;if((value==='split'||value==='preview')&&previewStale)renderPreview();if((value==='write'||value==='split')&&layerStale)renderLinkLayer();if(value==='rich'&&previous!=='rich')loadRich();document.querySelector('.workspace').dataset.mode=value;document.querySelectorAll('[data-mode]').forEach(b=>{if(b.tagName==='BUTTON')b.setAttribute('aria-pressed',b.dataset.mode===value)});document.querySelectorAll('.format button').forEach(b=>b.disabled=value==='preview');position();persist()}
 function fonts(){if(!$('font').value||['Iosevka SS03 Extended','Iosevka Fixed SS03'].includes($('font').value))$('font').value='Iosevka Fixed SS03 Extended';document.documentElement.style.setProperty('--font','"'+$('font').value+'", '+(['Iosevka Fixed SS03 Extended','Iosevka SS03 Extended','Iosevka Fixed SS03','Consolas','Courier New'].includes($('font').value)?'monospace':'serif'));document.documentElement.style.setProperty('--size',(appReady?textZoomSize(prefs.zoom):16)+'px');persist()}
 function insert(text,start=editor.selectionStart,end=editor.selectionEnd){editor.focus();editor.setSelectionRange(start,end);if(!document.execCommand('insertText',false,text)){editor.setRangeText(text,start,end,'end')}change()}
 function format(type){if(type==='quote'){quoteSelection();return}if(mode==='rich'){richFormat(type);return}const a=editor.selectionStart,b=editor.selectionEnd,s=editor.value.slice(a,b);if(type==='heading'||type==='list'){const start=a===0?0:editor.value.lastIndexOf('\n',a-1)+1,prefix=type==='heading'?'# ':'- ';insert(editor.value.slice(start,b).split('\n').map(l=>prefix+l).join('\n'),start,b)}else{const mark={bold:'**',italic:'*',underline:'__',code:'`'}[type];insert(mark+(s||'text')+mark,a,b);editor.setSelectionRange(a+mark.length,a+mark.length+(s||'text').length)}}
@@ -269,7 +311,7 @@ function restoreRange(){rich.focus({preventScroll:true});const s=getSelection();
 function caretOffset(){const s=getSelection();if(!s.rangeCount||!rich.contains(s.anchorNode))return 0;const r=s.getRangeAt(0).cloneRange();r.selectNodeContents(rich);r.setEnd(s.anchorNode,s.anchorOffset);return r.toString().length}
 function placeCaret(offset){const walker=document.createTreeWalker(rich,NodeFilter.SHOW_TEXT);let n,left=Math.max(0,offset),last;while(n=walker.nextNode()){last=n;if(left<=n.length){const r=document.createRange();r.setStart(n,left);r.collapse(true);const s=getSelection();s.removeAllRanges();s.addRange(r);rememberRange();return}left-=n.length}const r=document.createRange();if(last)r.setStart(last,last.length);else{r.selectNodeContents(rich)}r.collapse(false);const s=getSelection();s.removeAllRanges();s.addRange(r);rememberRange()}
 function markdownText(s){return s.replace(/\u00a0/g,' ').replace(/([\\*_`\[\]=>~])/g,'\\$1')}
-function richMarkdown(root=rich){
+function richMarkdown(root=rich,cache){
  function content(node){return [...node.childNodes].map(visit).join('')}
  // Literal line-leading -, +, #, "3. " and table-separator rows cannot reopen as a bullet, heading, numbered list or table.
  function paragraph(t){return (t==='\n'?'':t.replace(/\n$/,'').replace(/^([ \t]*)([-+])(?=[ \t])/gm,'$1\\$2').replace(/^(#{1,6})(?=[ \t])/gm,'\\$1').replace(/^([ \t]*\d+)\.(?=[ \t])/gm,'$1\\.').replace(/^(?=[^\n]*\|)[ \t|:-]*-{3,}[ \t|:-]*$/gm,line=>line.replace(/\|/g,'\\|')))+'\n'}
@@ -300,24 +342,58 @@ function richMarkdown(root=rich){
  }
  // Text pasted into an empty editor sits outside any paragraph; keep it on its own line before the next block.
  let out='',run='';
- for(const n of root.childNodes){if(n.nodeType===1&&/^(P|DIV|H[1-6]|UL|OL|BLOCKQUOTE|PRE|HR|TABLE)$/.test(n.tagName)){if(run)out+=run.trim()?paragraph(run):run;run='';out+=visit(n)}else run+=visit(n)}
+ // The live note passes a cache of each top-level block's Markdown; noteRichChanges drops an entry when anything inside the block changes.
+ for(const n of root.childNodes){if(n.nodeType===1&&/^(P|DIV|H[1-6]|UL|OL|BLOCKQUOTE|PRE|HR|TABLE)$/.test(n.tagName)){if(run)out+=run.trim()?paragraph(run):run;run='';let block=cache?.get(n);if(block===undefined){block=visit(n);cache?.set(n,block)}out+=block}else run+=visit(n)}
  if(run)out+=run.trim()?paragraph(run):run;
  return out.replace(/\n$/,'');
 }
-function markAutoLinks(){rich.querySelectorAll('a').forEach(a=>{a.target='_blank';a.rel='noopener noreferrer';a.title='Click for link options · Ctrl+click to open';const text=a.textContent;const url=safeURL(/^https?:\/\//i.test(text)?text:'https://'+text);if(url===a.href)a.dataset.auto='true'});rich.querySelectorAll('li[data-checked]').forEach(li=>{if(!li.querySelector('.task-box')){li.dataset.checked='false';const box=document.createElement('span');box.className='task-box';box.contentEditable='false';box.setAttribute('role','checkbox');box.setAttribute('aria-checked','false');box.setAttribute('aria-label','Mark task complete');box.tabIndex=0;box.textContent='☐';li.prepend(box)}})}
+// Attributes are written only when they differ, so an unchanged link records no change.
+function markAutoLinks(roots=[rich]){for(const root of roots){root.querySelectorAll('a').forEach(a=>{if(a.target!=='_blank')a.target='_blank';if(a.rel!=='noopener noreferrer')a.rel='noopener noreferrer';if(a.title!=='Click for link options · Ctrl+click to open')a.title='Click for link options · Ctrl+click to open';const text=a.textContent;const url=safeURL(/^https?:\/\//i.test(text)?text:'https://'+text);if(url===a.href&&a.dataset.auto!=='true')a.dataset.auto='true'});[...(root.matches('li[data-checked]')?[root]:[]),...root.querySelectorAll('li[data-checked]')].forEach(li=>{if(!li.querySelector('.task-box')){li.dataset.checked='false';const box=document.createElement('span');box.className='task-box';box.contentEditable='false';box.setAttribute('role','checkbox');box.setAttribute('aria-checked','false');box.setAttribute('aria-label','Mark task complete');box.tabIndex=0;box.textContent='☐';li.prepend(box)}})}}
+// Typing in a long note revisits only what an edit touched. Each change inside the note is recorded against its block: the
+// nearest paragraph, list item, heading, cell or list, or the whole note for loose top-level text. Links are re-detected
+// (autoLinksOnly) and re-marked (commitRich) in those blocks only, and their cached Markdown is dropped. Untouched blocks are
+// already as a whole-note pass would leave them, so the result matches processing the whole note on every key.
+const richMarkdownCache=new WeakMap(),richLinkUnits=new Set(),richMarkUnits=new Set(),richUnitTags=/^(P|DIV|LI|H[1-6]|BLOCKQUOTE|PRE|TD|TH|UL|OL|TABLE|THEAD|TBODY|TFOOT|TR|HR)$/,richContainerTags=/^(UL|OL|TABLE|THEAD|TBODY|TFOOT|TR)$/;
+function richUnit(node){let e=node.nodeType===1?node:node.parentNode;while(e&&e!==rich&&!richUnitTags.test(e.tagName))e=e.parentNode;return e}
+function noteRichChanges(records=richWatch.takeRecords(),sets=[richLinkUnits,richMarkUnits]){
+ for(const r of records){
+  if(r.type==='attributes'&&r.target===rich)continue;
+  for(let n=r.target;n&&n!==rich;n=n.parentNode)richMarkdownCache.delete(n);
+  r.addedNodes.forEach(n=>richMarkdownCache.delete(n));
+  // A container's added children and the neighbors of removed ones; otherwise the changed node's own block.
+  const touched=r.type==='childList'&&(r.target===rich||richContainerTags.test(r.target.tagName))?[...r.addedNodes,r.previousSibling,r.nextSibling]:[r.target];
+  for(const n of touched)if(n&&rich.contains(n)){const unit=richUnit(n);for(const set of sets)set.add(unit)}
+ }
+}
+const richWatch=new MutationObserver(records=>noteRichChanges(records));richWatch.observe(rich,{subtree:true,childList:true,characterData:true,attributes:true});
+// Link-only and Markdown passes settle blocks differently, so the first pass of the other kind covers the whole note.
+let richPassKind='',autoFormatSnapshot=null;
+// Empties the set and returns its outermost blocks still in the note, or the whole note.
+function takeRichUnits(set){noteRichChanges();const units=[...set].filter(u=>u===rich||rich.contains(u));set.clear();if(units.includes(rich))return [rich];const chosen=new Set(units);return units.filter(u=>{for(let p=u.parentNode;p&&p!==rich;p=p.parentNode)if(chosen.has(p))return false;return true})}
 function loadRich(){rich.innerHTML=editor.value?markdown(editor.value):'';markAutoLinks();richRange=null;richHistory=[];historyIndex=-1;recordRich()}
 function recordRich(){const state={html:rich.innerHTML,text:editor.value,caret:caretOffset()};if(richHistory[historyIndex]?.html===state.html)return;richHistory.splice(historyIndex+1);richHistory.push(state);if(richHistory.length>150)richHistory.shift();historyIndex=richHistory.length-1}
-function commitRich(){editor.value=richMarkdown();markAutoLinks();rememberRange();render();persist();recordRich()}
+function commitRich(){noteRichChanges();editor.value=richMarkdown(rich,richMarkdownCache);markAutoLinks(takeRichUnits(richMarkUnits));rememberRange();render();persist();recordRich()}
 function undoRich(redo=false){const next=historyIndex+(redo?1:-1);if(next<0||next>=richHistory.length)return;historyIndex=next;const state=richHistory[next];rich.innerHTML=state.html;editor.value=state.text;placeCaret(state.caret);render();persist()}
 function autoFormatRich(){
  const selection=getSelection();if(!selection.isCollapsed||!rich.contains(selection.anchorNode))return;
  let offset=caretOffset();
+ // Only blocks changed since the last pass are converted again, and a block that would come out the same is left as it is (see autoLinksOnly).
+ const loose=rich.childNodes.length&&![...rich.children].some(n=>/^(P|DIV|H[1-6]|UL|OL|BLOCKQUOTE|PRE|HR|TABLE)$/.test(n.tagName)),full=loose||richPassKind!=='markdown';richPassKind='markdown';
+ let roots=full?[rich]:takeRichUnits(richLinkUnits);if(full)richLinkUnits.clear();const settled=new Map(loose?[]:roots.map(root=>[root,linksSettled(root,selection.getRangeAt(0),inline)]));
+ const visited=roots;roots.forEach(root=>{if(settled.get(root)===2)root.normalize()});roots=roots.filter(root=>!settled.get(root)).sort((a,b)=>a.compareDocumentPosition(b)&Node.DOCUMENT_POSITION_FOLLOWING?-1:1);
+ let caretUnit=richUnit(selection.getRangeAt(0).startContainer),exitInline=null;
+ if(roots.length){
+ autoFormatSnapshot?.();
  const bookmark=document.createElement('span');bookmark.dataset.caret='true';selection.getRangeAt(0).insertNode(bookmark);
- if(rich.childNodes.length&&![...rich.children].some(n=>/^(P|DIV|H[1-6]|UL|OL|BLOCKQUOTE|PRE|HR|TABLE)$/.test(n.tagName))){const p=document.createElement('p');p.append(...rich.childNodes);rich.append(p)}
+ if(loose){const p=document.createElement('p');p.append(...rich.childNodes);rich.append(p)}
  // Re-detect automatically created links so editing their address also updates the destination.
- rich.querySelectorAll('a[data-auto]').forEach(a=>a.replaceWith(...a.childNodes));rich.normalize();
- const walker=document.createTreeWalker(rich,NodeFilter.SHOW_TEXT),nodes=[];let node;while(node=walker.nextNode())nodes.push(node);
- let originalPosition=0,removed=0,exitInline=null;
+ for(const root of roots){root.querySelectorAll('a[data-auto]').forEach(a=>a.replaceWith(...a.childNodes));root.normalize()}
+ // Positions count the whole note's text before any conversion; roots are in document order, so each base adds the text since the previous root.
+ let base=0,previous=rich;const bases=roots.map(root=>{if(root===rich)return 0;const r=document.createRange();if(previous===rich)r.setStart(rich,0);else r.setStartBefore(previous);r.setEndBefore(root);previous=root;return base+=r.toString().length});
+ let removed=0;
+ roots.forEach((root,k)=>{
+ const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT),nodes=[];let node;while(node=walker.nextNode())nodes.push(node);
+ let originalPosition=bases[k];
  for(const n of nodes){const text=n.data,start=originalPosition;originalPosition+=text.length;
   if(n.parentElement.closest('a,code,pre,.task-box,[data-no-link]'))continue;
   if(offset>start&&offset<start+text.length)continue;
@@ -327,12 +403,19 @@ function autoFormatRich(){
   if(start+text.length<=offset)removed+=text.length-temp.content.textContent.length;
   n.replaceWith(temp.content);
  }
- const caret=document.createRange();caret.setStartBefore(bookmark);caret.collapse(true);bookmark.remove();selection.removeAllRanges();selection.addRange(caret);markAutoLinks();
+ });
+ caretUnit=richUnit(bookmark);
+ const caret=document.createRange();caret.setStartBefore(bookmark);caret.collapse(true);bookmark.remove();selection.removeAllRanges();selection.addRange(caret);
+ }else resetCaret(selection);
+ // As in autoLinksOnly, the caret's block and every rebuilt block are checked again on the next pass.
+ noteRichChanges(richWatch.takeRecords(),[]);for(const unit of [caretUnit,...roots])if(unit===rich||rich.contains(unit))richLinkUnits.add(unit);
+ // Links and task boxes are marked in every revisited block before saving, as the whole-note pass did; those changes are recorded like edits.
+ markAutoLinks(visited);
  if(exitInline?.isConnected){const r=document.createRange();r.setStartAfter(exitInline);r.collapse(true);getSelection().removeAllRanges();getSelection().addRange(r);for(const command of ['bold','italic','underline'])if(document.queryCommandState(command))document.execCommand(command,false,null);normalAfterMarkdown=true}
  // Convert Markdown block prefixes when the user types their following space. Typed -, * and + stay literal text.
  const current=getSelection().anchorNode;const block=(current?.nodeType===3?current.parentElement:current)?.closest('p,div');
  if(block&&rich.contains(block)&&block!==rich&&/^(#{1,6}|1\.)[ \u00a0]$/.test(block.textContent)){
-  const prefix=block.textContent.trim();
+  autoFormatSnapshot?.();const prefix=block.textContent.trim();
   if(prefix[0]==='#'){const next=document.createElement('h'+prefix.length);next.append(document.createElement('br'));block.replaceWith(next);const r=document.createRange();r.setStart(next,0);r.collapse(true);getSelection().removeAllRanges();getSelection().addRange(r)}
   else{block.textContent='';block.append(document.createElement('br'));const r=document.createRange();r.setStart(block,0);r.collapse(true);getSelection().removeAllRanges();getSelection().addRange(r);document.execCommand('insertOrderedList')}
  }
@@ -724,9 +807,10 @@ if((prefs.iosevkaDefaultVersion||0)<3){prefs.iosevkaDefaultVersion=3;fonts()}
 let autoFormatRevert=null,normalAfterMarkdown=false;
 const convertMarkdownRich=autoFormatRich;
 autoFormatRich=function(){
- const before=rich.innerHTML,beforeText=rich.textContent,at=caretOffset();
- autoFormatRevert=null;convertMarkdownRich();
- if(beforeText!==rich.textContent)autoFormatRevert={html:before,at,after:rich.innerHTML,caret:caretOffset(),id:activeId};
+ // The note is copied only when conversion is about to change it; convertMarkdownRich calls the snapshot first.
+ let before=null,beforeText,at;autoFormatSnapshot=()=>{if(before===null){before=rich.innerHTML;beforeText=rich.textContent;at=caretOffset()}};
+ autoFormatRevert=null;try{convertMarkdownRich()}finally{autoFormatSnapshot=null}
+ if(before!==null&&beforeText!==rich.textContent)autoFormatRevert={html:before,at,after:rich.innerHTML,caret:caretOffset(),id:activeId};
 };
 function revertAutomaticMarkdown(e){
  if(e.key!=='Backspace'||e.ctrlKey||e.metaKey||e.altKey||e.shiftKey||e.isComposing)return;
@@ -849,14 +933,65 @@ function nestedListHTML(lines){
  html+='</'+type+'>';if(at<items.length&&items[at].depth<depth)break;}return html;}
  let result='';while(at<items.length)result+=group(items[at].depth);return result;
 }
+// Whether finding links again in root, with the caret splitting its text as autoLinksOnly's marker does, would change it:
+// 0 if it would, 1 if not, 2 if it would only merge adjacent or empty text nodes. Anything unusual counts as a change.
+function linksSettled(root,caret,convert=text=>writingLinks(text).slice(0,-1)){
+ const at=caret.startContainer,offset=caret.startOffset,attributes=['href','target','rel','title','data-auto'],values=[null,'_blank','noopener noreferrer','Click for link options · Ctrl+click to open','true'];let merge=false;
+ for(const parent of [root,...root.querySelectorAll('*')]){
+  if(parent.matches('a[data-auto]'))continue;
+  // Each text run (text nodes and automatic links between other elements, ended early by the caret) must already read as its links would be rebuilt.
+  const excluded=parent.closest('a,code,pre,.task-box,[data-no-link]'),kids=parent.childNodes;let text='',current='',previous=null;
+  const end=()=>{const ok=excluded?current===escapeHTML(text):convert(text)===current&&(current===escapeHTML(text)||!/[\r\0]/.test(text));text=current='';return ok};
+  for(let i=0;i<=kids.length;i++){
+   if(parent===at&&i===offset&&!end())return 0;
+   if(i===kids.length)break;
+   const n=kids[i];
+   if(n.nodeType===3){
+    if(!n.length||previous===3)merge=true;
+    if(n===at){text+=n.data.slice(0,offset);current+=escapeHTML(n.data.slice(0,offset));if(!end())return 0;text=n.data.slice(offset);current=escapeHTML(text)}else{text+=n.data;current+=escapeHTML(n.data)}
+   }else if(n.nodeType===1&&n.matches('a[data-auto]')){
+    const t=n.firstChild;if(n.childNodes.length!==1||t.nodeType!==3||n.attributes.length!==5||[...n.attributes].some((a,k)=>a.name!==attributes[k]||k&&a.value!==values[k]))return 0;
+    const split=n===at?(offset?t.length:0):t===at?offset:-1;if(split>0&&split<t.length)return 0;
+    if(split===0&&!end())return 0;
+    text+=t.data;current+='<a href="'+escapeHTML(n.getAttribute('href'))+'" target="_blank" rel="noopener noreferrer">'+escapeHTML(t.data)+'</a>';
+    if(split===t.length&&!end())return 0;
+   }else if(!end())return 0;
+   previous=n.nodeType===3?3:n.nodeType===1&&n.matches('a[data-auto]')?1:null;
+  }
+  if(!end())return 0;
+ }
+ return merge?2:1;
+}
+// When nothing is rebuilt, the caret is set again where the marker would have left it: between nodes at the edge of a text node,
+// and outside an automatic link. Setting the selection also ends the browser's pending typing style, as the rebuild always did.
+function resetCaret(s){
+ const r=s.getRangeAt(0);let node=r.startContainer,offset=r.startOffset;
+ if(node.nodeType===3&&(offset===0||offset===node.length)){const after=offset>0;let child=node;if(node.parentNode.matches('a[data-auto]')&&node.parentNode.childNodes.length===1)child=node.parentNode;node=child.parentNode;offset=[...node.childNodes].indexOf(child)+(after?1:0)}
+ const caret=document.createRange();caret.setStart(node,offset);caret.collapse(true);s.removeAllRanges();s.addRange(caret);
+}
 function autoLinksOnly(){
  const s=getSelection();if(!s.rangeCount||!s.isCollapsed||!rich.contains(s.anchorNode))return;
- const marker=document.createElement('span');s.getRangeAt(0).insertNode(marker);
- if(rich.childNodes.length&&![...rich.children].some(n=>/^(P|DIV|H[1-6]|UL|OL|BLOCKQUOTE|PRE|HR|TABLE)$/.test(n.tagName))){const p=document.createElement('p');p.append(...rich.childNodes);rich.append(p);}
- rich.querySelectorAll('a[data-auto]').forEach(a=>a.replaceWith(...a.childNodes));rich.normalize();
- const walker=document.createTreeWalker(rich,NodeFilter.SHOW_TEXT),nodes=[];let n;while(n=walker.nextNode())nodes.push(n);
- for(const text of nodes){if(text.parentElement.closest('a,code,pre,.task-box,[data-no-link]'))continue;const html=writingLinks(text.data).slice(0,-1);if(html===escapeHTML(text.data))continue;const temp=document.createElement('template');temp.innerHTML=html;text.replaceWith(temp.content);}
- const r=document.createRange();r.setStartBefore(marker);r.collapse(true);marker.remove();s.removeAllRanges();s.addRange(r);markAutoLinks();rememberRange();
+ const caret=s.getRangeAt(0),loose=rich.childNodes.length&&![...rich.children].some(n=>/^(P|DIV|H[1-6]|UL|OL|BLOCKQUOTE|PRE|HR|TABLE)$/.test(n.tagName));
+ // Only blocks changed since the last pass are revisited (see noteRichChanges). A block whose links would come out the same is left as it is,
+ // apart from merging split text, so ordinary typing changes nothing here. Changing DOM next to the caret is slow in a long note.
+ const full=loose||richPassKind!=='links';richPassKind='links';
+ let roots=full?[rich]:takeRichUnits(richLinkUnits);if(full)richLinkUnits.clear();const settled=new Map(loose?[]:roots.map(root=>[root,linksSettled(root,caret)]));
+ const visited=roots;roots.forEach(root=>{if(settled.get(root)===2)root.normalize()});roots=roots.filter(root=>!settled.get(root));
+ const marker=(loose||roots.some(root=>root.contains(caret.startContainer)))&&document.createElement('span');if(marker)caret.insertNode(marker);
+ if(loose){const p=document.createElement('p');p.append(...rich.childNodes);rich.append(p);}
+ for(const root of roots){
+  root.querySelectorAll('a[data-auto]').forEach(a=>a.replaceWith(...a.childNodes));root.normalize();
+  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT),nodes=[];let n;while(n=walker.nextNode())nodes.push(n);
+  for(const text of nodes){if(text.parentElement.closest('a,code,pre,.task-box,[data-no-link]'))continue;const html=writingLinks(text.data).slice(0,-1);if(html===escapeHTML(text.data))continue;const temp=document.createElement('template');temp.innerHTML=html;text.replaceWith(temp.content);}
+ }
+ const caretUnit=richUnit(marker||s.getRangeAt(0).startContainer);
+ if(marker){const r=document.createRange();r.setStartBefore(marker);r.collapse(true);marker.remove();s.removeAllRanges();s.addRange(r)}else resetCaret(s);
+ // The rebuild's own changes are not recorded. Instead the caret's block (the caret splits its text) and every rebuilt block (a rebuild
+ // can leave more to convert) are checked again on the next pass, as the whole-note pass revisited everything.
+ noteRichChanges(richWatch.takeRecords(),[]);for(const unit of [caretUnit,...roots])if(unit===rich||rich.contains(unit))richLinkUnits.add(unit);
+ // Links and task boxes are marked in every revisited block before saving, as the whole-note pass did; those changes are recorded like edits.
+ markAutoLinks(visited);
+ rememberRange();
 }
 const optionalAutoFormat=autoFormatRich;
 autoFormatRich=function(){if(prefs.autoMarkdown===true)optionalAutoFormat();else{autoFormatRevert=null;normalAfterMarkdown=false;autoLinksOnly();}};

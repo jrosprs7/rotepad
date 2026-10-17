@@ -1,5 +1,37 @@
 # Rotepad changelog
 
+## 10/17/26 7:46 AM GMT+8 — Fast typing in large Markdown-view and Split notes
+
+- Typing in a very large note in Markdown view or Split view was still slow (roadmap): every key rebuilt the whole link layer and, in Markdown view, the hidden preview.
+- **Fix (Rotepad.html only; the synchronized tools files do not contain these functions):** each view builds only what it shows, and the hidden part is rebuilt when a view shows it. The link layer keeps one element per line and rebuilds only the changed lines. The preview keeps where each block starts and re-parses only from the block before the change to the first unchanged block boundary after it. See the [architecture](docs/ARCHITECTURE.md).
+- **After**, measured in headless Edge from keydown to the next frame, median per key, 0.12.6 → now: Markdown view 48 → 14 ms at 2,000 lines, 192 → 48 ms at 10,000 lines and 250 → 64 ms in a 5,000-line note of web addresses; Split view 359 → 47 ms and 580 → 62 ms in the same notes. The textarea alone costs about 14 ms. In development Electron with a clean profile: Markdown view 271 → 48 and 329 → 97 ms, Split view 383 → 80 and 600 → 130 ms. What remains is mostly the browser's layout of the long textarea and link layer, and the whole-library save (still on the [roadmap](ROADMAP.md)).
+- **Found, not changed:** a backslash inside a web address (`https://y\.org`) is left out of the Markdown-view link layer, so the rest of that line's layer sits one character off the text. 0.12.6 does the same; added to the roadmap.
+
+| Area / expected behavior | Current verification | Result / limits |
+| --- | --- | --- |
+| Same preview and link layer | desktop/large-typing-smoke.cjs gained Markdown-view and Split scenarios (addresses, Enter, joining lines, multi-line paste, selection delete, Undo/Redo, Find, view switches; lists, code fences, tables, headings and a quote in a mixed note) and four seeded random runs. After every step they must match 0.12.6's whole-note render: Markdown, saved note, preview, link-layer HTML and text, link and Find-highlight positions on screen, and the layer scrolled with the textarea. Separately, 20,000 random source edits in Split view (Markdown markers, fences, tables, lists, addresses, backslashes, emptying the note) compared the preview and layer with a whole-note build after each edit: no differences | Passed in Edge and development Electron. The handoff's Split-view link-position failure was the harness: after an earlier scenario the textarea scrolls its caret into view a frame late, with old and new code alike, so the two passes started at different scroll positions. Both passes now start at the top. |
+| Per-key budget | The budget now covers Formatted, Markdown and Split views, each in a 10,000-line note and a 5,000-line address note, under 150 ms. Only the newest long note stays in the library: each key saves the whole library, so in browser storage six such notes filled the quota, and in Electron they made Split view miss the budget (194 ms) | Passed. Edge: Markdown 64/97 ms, Split 77/94 ms; Electron: Markdown 64/97 ms, Split 63/96 ms. Headless or automated timings on this PC only. |
+| Neighbors | All root tests; every browser smoke; the editor suites (including large-paste and large-typing) with `--desktop`; every desktop smoke (51 commands) | Passed. No build. |
+
+## 10/17/26 2:12 AM GMT+8 — Fast typing in large Formatted notes
+
+- Typing in a very large note in Formatted view was slow (roadmap). Measured in headless Edge with 0.12.6's code, from keydown to the next frame: about 50 ms per key at 2,000 lines, 210 ms at 10,000 lines and 960 ms in a 5,000-line note of web addresses.
+- **Cause:** every keystroke rebuilt the hidden preview and Markdown link layer, unwrapped and re-detected every link in the note, re-marked every link and serialized every block. Each rebuild also changed the DOM next to the caret, which costs Chromium over 10 ms per change in a long note.
+- **Fix (Rotepad.html; tools/formatted-editor.js synchronized):** typing now revisits only the blocks an edit touched. Blocks whose links would come out the same are not rebuilt. Each block's Markdown is cached until it changes. The preview is rebuilt only when a view shows it. The optional auto-Markdown pass works the same way. See the [architecture](docs/ARCHITECTURE.md).
+- **After:** 14 ms per key at 2,000 lines, about 45 ms at 10,000 lines and 52 ms in the 5,000-line address note, with auto-Markdown off or on. The browser's own floor for a keystroke in that note is about 31 ms. The first key after opening a note or Undo checks every block: about 0.2 s in the address note, against 0.6 s before.
+- **Saved text unchanged.** Three old behaviors are kept on purpose:
+  - Deleting a style's last character and typing gives plain text, because each pass sets the caret again.
+  - A box restored after Enter on a ticked task is saved unticked.
+  - A conversion that exposes another one is finished on the next key.
+- **One caret improvement:** after typing, switching to Markdown view and back now returns the caret to where typing stopped. Before, it could land at the end of the line.
+- **Still slow** (added to the [roadmap](ROADMAP.md)): typing in Markdown view at 10,000 lines (about 200 ms per key, unchanged), and the whole-library save on every key, which grows with the other notes (77 ms per key in the address note with three other 10,000-line notes).
+
+| Area / expected behavior | Current verification | Result / limits |
+| --- | --- | --- |
+| Same saved Markdown | New desktop/large-typing-smoke.cjs types 33 scenarios (655 steps, real keys) once with the current code and once with the replaced whole-note functions kept in the script. After every step it compares Markdown, saved note, editor HTML and caret. Separately, during development, the same scenarios ran against the previous Rotepad.html in another page, plus 8,400 seeded random steps on a 60-paragraph link note and a mixed note (lists, tasks, quote, code, table, Tab, Ctrl+B, Undo, Shift+Enter): no differences. These runs found the three kept behaviors above, and each now has a scenario that fails without its fix | Passed in Edge and development Electron. Keys are synthetic; IME composition was not exercised. Between steps the harness waits a frame: Ctrl+B uses the caret remembered on `selectionchange`, which faster automated keys can outrun in both versions. |
+| Per-key budget | The same script types 16 keys mid-note in a 10,000-line note and a 5,000-line address note. The median must be under 150 ms and the text must be saved; with `--desktop` it also checks the managed Markdown file | Passed: Edge 51/88 ms, Electron 62/101 ms with the scenario notes still in the library. Headless timings on this PC only. |
+| Neighbors | All root tests; every browser smoke; the editor suites (including large-paste and large-typing) with `--desktop`; every desktop smoke (51 commands) | Passed. No build. |
+
 ## 10/17/26 1:10 AM GMT+8 — Fast large paste in Formatted view
 
 - A tester reported that pasting a lot of text was slow compared with Notepad. Measured in headless Edge before the fix: 100 lines took 0.4 s, 400 lines 5.4 s and 2,000 lines 144 s, rising with the square of the line count.

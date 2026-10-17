@@ -19,9 +19,10 @@ These findings remain unresolved in the documentation. Reproduce against the cur
 
 - [ ] Decide which unsupported Markdown to add (all currently shown as plain text, with the text kept): table alignment (and GitHub's short `:-:` delimiter cells), images (needs an offline decision: remote images require a network), nested quotes `>>`, link titles, `<https://…>` links, reference links, footnotes, indented code, two-space line breaks, inline HTML and math. Literal `---`, setext headings, `_text_` and one-paragraph-per-line are deliberate.
 
-- [ ] Triage the remaining [2026-10-06 exploratory QA findings](docs/QA-2026-10-06.md). Its data-loss items (D1–D7) and the `#`/`~~` and file-name link changes (F1–F2) are fixed. Next: format changes on reload (F3–F12), caret after list commands and Undo, Markdown-view Outline scrolling with wrapped lines, and backup/Trash/keyboard issues. Large-paste speed is fixed (see the changelog).
+- [ ] Triage the remaining [2026-10-06 exploratory QA findings](docs/QA-2026-10-06.md). Its data-loss items (D1–D7) and the `#`/`~~` and file-name link changes (F1–F2) are fixed. Next: format changes on reload (F3–F12), caret after list commands and Undo, Markdown-view Outline scrolling with wrapped lines, and backup/Trash/keyboard issues. Large-paste and large-note typing speed are fixed (see the changelog).
 
-- [ ] Typing in a very large Formatted note is slow: every keystroke re-detects links across the whole note, re-renders the hidden preview and re-serializes the note. Measured 2026-10-17 in headless Edge: about 50 ms per key at 2,000 lines and 230 ms at 10,000 lines; a 5,000-line note full of web addresses took about 650 ms per key.
+- [ ] In Markdown and Split views, a backslash inside a web address (`https://y\.org`) is left out of the link layer, so the rest of that line's clickable links sit one character off the text. Found 2026-10-17; 0.12.6 does the same.
+- [ ] Each keystroke still saves the whole library: every note is serialized to browser storage (and, in the desktop app, to the pending library write and the window cache), and the editor HTML is copied for Undo. In headless Edge, typing in a 5,000-line note took 54 ms per key alone and 77 ms with three other 10,000-line notes in the library. Storage changes need the persistence and recovery tests.
 
 Original reproductions are in the [0.5.1 QA report](docs/archive/QA-0.5.1.md). Its closed-note printing issue was resolved for desktop in 0.7.0 and is recorded in the changelog.
 

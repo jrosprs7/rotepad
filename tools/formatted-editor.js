@@ -16,14 +16,65 @@ function nestedListHTML(lines){
  html+='</'+type+'>';if(at<items.length&&items[at].depth<depth)break;}return html;}
  let result='';while(at<items.length)result+=group(items[at].depth);return result;
 }
+// Whether finding links again in root, with the caret splitting its text as autoLinksOnly's marker does, would change it:
+// 0 if it would, 1 if not, 2 if it would only merge adjacent or empty text nodes. Anything unusual counts as a change.
+function linksSettled(root,caret,convert=text=>writingLinks(text).slice(0,-1)){
+ const at=caret.startContainer,offset=caret.startOffset,attributes=['href','target','rel','title','data-auto'],values=[null,'_blank','noopener noreferrer','Click for link options · Ctrl+click to open','true'];let merge=false;
+ for(const parent of [root,...root.querySelectorAll('*')]){
+  if(parent.matches('a[data-auto]'))continue;
+  // Each text run (text nodes and automatic links between other elements, ended early by the caret) must already read as its links would be rebuilt.
+  const excluded=parent.closest('a,code,pre,.task-box,[data-no-link]'),kids=parent.childNodes;let text='',current='',previous=null;
+  const end=()=>{const ok=excluded?current===escapeHTML(text):convert(text)===current&&(current===escapeHTML(text)||!/[\r\0]/.test(text));text=current='';return ok};
+  for(let i=0;i<=kids.length;i++){
+   if(parent===at&&i===offset&&!end())return 0;
+   if(i===kids.length)break;
+   const n=kids[i];
+   if(n.nodeType===3){
+    if(!n.length||previous===3)merge=true;
+    if(n===at){text+=n.data.slice(0,offset);current+=escapeHTML(n.data.slice(0,offset));if(!end())return 0;text=n.data.slice(offset);current=escapeHTML(text)}else{text+=n.data;current+=escapeHTML(n.data)}
+   }else if(n.nodeType===1&&n.matches('a[data-auto]')){
+    const t=n.firstChild;if(n.childNodes.length!==1||t.nodeType!==3||n.attributes.length!==5||[...n.attributes].some((a,k)=>a.name!==attributes[k]||k&&a.value!==values[k]))return 0;
+    const split=n===at?(offset?t.length:0):t===at?offset:-1;if(split>0&&split<t.length)return 0;
+    if(split===0&&!end())return 0;
+    text+=t.data;current+='<a href="'+escapeHTML(n.getAttribute('href'))+'" target="_blank" rel="noopener noreferrer">'+escapeHTML(t.data)+'</a>';
+    if(split===t.length&&!end())return 0;
+   }else if(!end())return 0;
+   previous=n.nodeType===3?3:n.nodeType===1&&n.matches('a[data-auto]')?1:null;
+  }
+  if(!end())return 0;
+ }
+ return merge?2:1;
+}
+// When nothing is rebuilt, the caret is set again where the marker would have left it: between nodes at the edge of a text node,
+// and outside an automatic link. Setting the selection also ends the browser's pending typing style, as the rebuild always did.
+function resetCaret(s){
+ const r=s.getRangeAt(0);let node=r.startContainer,offset=r.startOffset;
+ if(node.nodeType===3&&(offset===0||offset===node.length)){const after=offset>0;let child=node;if(node.parentNode.matches('a[data-auto]')&&node.parentNode.childNodes.length===1)child=node.parentNode;node=child.parentNode;offset=[...node.childNodes].indexOf(child)+(after?1:0)}
+ const caret=document.createRange();caret.setStart(node,offset);caret.collapse(true);s.removeAllRanges();s.addRange(caret);
+}
 function autoLinksOnly(){
  const s=getSelection();if(!s.rangeCount||!s.isCollapsed||!rich.contains(s.anchorNode))return;
- const marker=document.createElement('span');s.getRangeAt(0).insertNode(marker);
- if(rich.childNodes.length&&![...rich.children].some(n=>/^(P|DIV|H[1-6]|UL|OL|BLOCKQUOTE|PRE|HR|TABLE)$/.test(n.tagName))){const p=document.createElement('p');p.append(...rich.childNodes);rich.append(p);}
- rich.querySelectorAll('a[data-auto]').forEach(a=>a.replaceWith(...a.childNodes));rich.normalize();
- const walker=document.createTreeWalker(rich,NodeFilter.SHOW_TEXT),nodes=[];let n;while(n=walker.nextNode())nodes.push(n);
- for(const text of nodes){if(text.parentElement.closest('a,code,pre,.task-box,[data-no-link]'))continue;const html=writingLinks(text.data).slice(0,-1);if(html===escapeHTML(text.data))continue;const temp=document.createElement('template');temp.innerHTML=html;text.replaceWith(temp.content);}
- const r=document.createRange();r.setStartBefore(marker);r.collapse(true);marker.remove();s.removeAllRanges();s.addRange(r);markAutoLinks();rememberRange();
+ const caret=s.getRangeAt(0),loose=rich.childNodes.length&&![...rich.children].some(n=>/^(P|DIV|H[1-6]|UL|OL|BLOCKQUOTE|PRE|HR|TABLE)$/.test(n.tagName));
+ // Only blocks changed since the last pass are revisited (see noteRichChanges). A block whose links would come out the same is left as it is,
+ // apart from merging split text, so ordinary typing changes nothing here. Changing DOM next to the caret is slow in a long note.
+ const full=loose||richPassKind!=='links';richPassKind='links';
+ let roots=full?[rich]:takeRichUnits(richLinkUnits);if(full)richLinkUnits.clear();const settled=new Map(loose?[]:roots.map(root=>[root,linksSettled(root,caret)]));
+ const visited=roots;roots.forEach(root=>{if(settled.get(root)===2)root.normalize()});roots=roots.filter(root=>!settled.get(root));
+ const marker=(loose||roots.some(root=>root.contains(caret.startContainer)))&&document.createElement('span');if(marker)caret.insertNode(marker);
+ if(loose){const p=document.createElement('p');p.append(...rich.childNodes);rich.append(p);}
+ for(const root of roots){
+  root.querySelectorAll('a[data-auto]').forEach(a=>a.replaceWith(...a.childNodes));root.normalize();
+  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT),nodes=[];let n;while(n=walker.nextNode())nodes.push(n);
+  for(const text of nodes){if(text.parentElement.closest('a,code,pre,.task-box,[data-no-link]'))continue;const html=writingLinks(text.data).slice(0,-1);if(html===escapeHTML(text.data))continue;const temp=document.createElement('template');temp.innerHTML=html;text.replaceWith(temp.content);}
+ }
+ const caretUnit=richUnit(marker||s.getRangeAt(0).startContainer);
+ if(marker){const r=document.createRange();r.setStartBefore(marker);r.collapse(true);marker.remove();s.removeAllRanges();s.addRange(r)}else resetCaret(s);
+ // The rebuild's own changes are not recorded. Instead the caret's block (the caret splits its text) and every rebuilt block (a rebuild
+ // can leave more to convert) are checked again on the next pass, as the whole-note pass revisited everything.
+ noteRichChanges(richWatch.takeRecords(),[]);for(const unit of [caretUnit,...roots])if(unit===rich||rich.contains(unit))richLinkUnits.add(unit);
+ // Links and task boxes are marked in every revisited block before saving, as the whole-note pass did; those changes are recorded like edits.
+ markAutoLinks(visited);
+ rememberRange();
 }
 const optionalAutoFormat=autoFormatRich;
 autoFormatRich=function(){if(prefs.autoMarkdown===true)optionalAutoFormat();else{autoFormatRevert=null;normalAfterMarkdown=false;autoLinksOnly();}};
