@@ -1,5 +1,15 @@
 # Rotepad changelog
 
+## 10/17/26 8:14 AM GMT+8 — Windows build 0.12.7 (not published)
+
+- Set the desktop package version to 0.12.7 for Always on top, fast large paste and fast typing in large notes in every view. Built Windows x64 NSIS and portable packages with `pnpm run dist` (pnpm 11.19.0 through corepack). The README download link still points at the published 0.12.4.
+- Rotepad-0.12.7-Setup.exe is 107,303,667 bytes, SHA-256 `41e6a43651965af4aa559817050b02fbca25b30e87a28e6e24f2e3078c15f4da`. Rotepad-0.12.7-Windows.exe is 107,060,941 bytes, SHA-256 `497c75195355d8b689ed6b3ffb4d39198e6db771511b48441465588f67a216b0`.
+
+| Area / expected behavior | Current verification | Result / limits |
+| --- | --- | --- |
+| Packaged payload | Extracted app.asar: version 0.12.7. main.cjs, preload.cjs, library-merge.cjs, markdown-store.cjs and the prepared app files (Rotepad.html, FONT-LICENSE.txt, icons) are byte-identical to the tested sources; the prepared Rotepad.html contains the incremental typing, preview and link-layer code and the one-step paste. shell-ui-smoke.cjs, large-typing-smoke.cjs --desktop, large-paste-smoke.cjs --desktop and always-on-top-smoke.cjs passed after the bump | Passed. The full suite (51 commands) ran on this source before the version-only change. |
+| Installation | Not run | Manual: install over 0.12.x; turn on Always on top against other apps; paste a long text; type in a long note in Formatted, Markdown and Split views. |
+
 ## 10/17/26 7:46 AM GMT+8 — Fast typing in large Markdown-view and Split notes
 
 - Typing in a very large note in Markdown view or Split view was still slow (roadmap): every key rebuilt the whole link layer and, in Markdown view, the hidden preview.
